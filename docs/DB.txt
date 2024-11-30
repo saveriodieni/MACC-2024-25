@@ -1,0 +1,1 @@
+User(username, email, hashed_password, level1, level2, level3, … ) 
