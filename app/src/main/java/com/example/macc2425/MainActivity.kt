@@ -1,6 +1,7 @@
 package com.example.macc2425
 
 //import android.content.Intent
+import android.content.pm.ActivityInfo
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import android.os.Bundle
@@ -8,11 +9,15 @@ import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.navigation.NavController
@@ -32,7 +37,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-
+        requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
         // Configura Google Sign-In
         val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
             .requestEmail()
@@ -91,10 +96,27 @@ fun HomeScreen(navController: NavController, googleSignInClient: GoogleSignInCli
         Button(onClick = {
             val signInIntent = googleSignInClient.signInIntent
             launcher.launch(signInIntent)
-        }) {
-            Text(text = "Sign in with Google")
-        }
+        },
+            modifier = Modifier.fillMaxWidth(),
+            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Center,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text(text = "Sign in with Google", style = MaterialTheme.typography.bodyLarge, modifier = Modifier.padding(end = 8.dp))
 
+                Icon(
+                    painter = painterResource(id = R.drawable.google_logo), // Sostituisci con il nome del tuo file
+                    contentDescription = "Google Logo",
+                    modifier = Modifier
+                        .size(30.dp) // Dimensione dell'icona
+                        .clip(CircleShape), // Applica la forma circolare
+                    tint = Color.Unspecified // Mantiene i colori originali
+                )
+            }
+        }
         Spacer(modifier = Modifier.height(8.dp))
 
         Button(onClick = {

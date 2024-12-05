@@ -5,6 +5,7 @@
 
     <!-- Aggiungi il permesso per l'accesso a internet -->
     <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.VIBRATE" />
 
     <!-- Definizione dell'applicazione -->
     <application
