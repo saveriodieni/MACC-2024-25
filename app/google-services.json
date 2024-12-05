@@ -1,1 +1,38 @@
-{"installed":{"client_id":"1022350378167-out2qh6bj1hndddrb2hfovqvdmsejsap.apps.googleusercontent.com","project_id":"macc-443310","auth_uri":"https://accounts.google.com/o/oauth2/auth","token_uri":"https://oauth2.googleapis.com/token","auth_provider_x509_cert_url":"https://www.googleapis.com/oauth2/v1/certs"}}
+{
+  "project_info": {
+    "project_number": "1022350378167",
+    "project_id": "macc-443310",
+    "storage_bucket": "macc-443310.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1022350378167:android:bda6426dcf0c1cf4ab7932",
+        "android_client_info": {
+          "package_name": "com.example.macc2425"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "1022350378167-out2qh6bj1hndddrb2hfovqvdmsejsap.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.macc2425",
+            "certificate_hash": "dd4819055091f87384dd4a607a2bad280120863f"
+          }
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBQvSH9emj1WVGo1fpTYGAahjs2DaIkgwc"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
