@@ -6,12 +6,10 @@ import android.graphics.BitmapFactory
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
-import android.graphics.Rect
 import android.hardware.Sensor
 import android.hardware.SensorEvent
 import android.hardware.SensorEventListener
 import android.hardware.SensorManager
-import android.os.Build
 import android.os.VibrationEffect
 import android.os.Vibrator
 import android.util.AttributeSet
@@ -23,29 +21,35 @@ class AutoView @JvmOverloads constructor(
     attrs: AttributeSet? = null
 ) : View(context, attrs), SensorEventListener {
 
+    private val DEBUG = false
+
+    private var lastXAccel = 0f
+    private var lastYAccel = 0f
+    private val alpha = 0.8f // Smoothing factor
+
     // Definizione dei limiti della pista (puoi impostarli come preferisci)
-    private val trackLeft = 95f   // Coordinata x del bordo sinistro della pista
-    private val trackRight = 800f  // Coordinata x del bordo destro della pista
+    private val trackLeft = 80f   // Coordinata x del bordo sinistro della pista
+    private val trackRight = 990f  // Coordinata x del bordo destro della pista
 
     private val vibrator = context.getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
 
     private var xPos1 = 0f // Posizione iniziale sull'asse X
     private var yPos1 = 500f // Posizione iniziale sull'asse Y
     private val paint1 = Paint()
-    private lateinit var carBitmap1: Bitmap // Immagine della macchina ridimensionata
+    private var carBitmap1: Bitmap // Immagine della macchina ridimensionata
 
     private var xPos2 = 500f // Posizione iniziale sull'asse X
     private var yPos2 = 0f // Posizione iniziale sull'asse Y
     private val paint2 = Paint()
-    private lateinit var carBitmap2: Bitmap // Immagine della macchina ridimensionata
+    private var carBitmap2: Bitmap // Immagine della macchina ridimensionata
 
     private var xAccel = 0f // Valore dell'accelerometro sull'asse X
     private var yAccel = 0f // Valore dell'accelerometro sull'asse Y
 
-    private lateinit var carMask1: Array<BooleanArray>
-    private lateinit var carMask2: Array<BooleanArray>
+    private var carMask1: Array<BooleanArray>
+    private var carMask2: Array<BooleanArray>
 
-    private lateinit var mapBitmap: Bitmap // Immagine della mappa ridimensionata
+    private var mapBitmap: Bitmap // Immagine della mappa ridimensionata
 
     private val sensorManager = context.getSystemService(Context.SENSOR_SERVICE) as SensorManager
 
@@ -54,14 +58,20 @@ class AutoView @JvmOverloads constructor(
 
     init {
         // Carica e ridimensiona le immagini delle macchine
-        val originalCarBitmap = BitmapFactory.decodeResource(resources, R.drawable.car_image)
+        var originalCarBitmap = BitmapFactory.decodeResource(resources, R.drawable.player1_image)
         carBitmap1 = Bitmap.createScaledBitmap(
             originalCarBitmap,
             (originalCarBitmap.width * scaleFactor).toInt(),
             (originalCarBitmap.height * scaleFactor).toInt(),
             true
         )
-        carBitmap2 = carBitmap1 // Usa lo stesso bitmap ridimensionato per la seconda macchina
+        originalCarBitmap = BitmapFactory.decodeResource(resources, R.drawable.player2_image)
+        carBitmap2 = Bitmap.createScaledBitmap(
+            originalCarBitmap,
+            (originalCarBitmap.width * scaleFactor).toInt(),
+            (originalCarBitmap.height * scaleFactor).toInt(),
+            true
+        )
 
         carMask1 = createCollisionMask(carBitmap1)
         carMask2 = createCollisionMask(carBitmap2)
@@ -109,16 +119,14 @@ class AutoView @JvmOverloads constructor(
         return Pair(minX, maxX)
     }
 
-    fun isCarOutOfTrackBounds(
-        carX: Float, carY: Float,
+    private fun isCarOutOfTrackBounds(
+        carX: Float,
         carMask: Array<BooleanArray>,
         trackLeft: Float, trackRight: Float
     ): Boolean {
-        // Calcola i bordi laterali della macchina usando la maschera
-        val (carLeft, carRight) = getCarBoundsFromMask(carMask)
-
+        val width = carMask[0].size
         // Verifica se i bordi laterali della macchina superano i limiti della pista
-        return (carX + carLeft < trackLeft || carX + carRight > trackRight)
+        return (carX < trackLeft || carX + width > trackRight)
     }
 
     // Funzione per controllare la collisione tra le macchine
@@ -158,6 +166,28 @@ class AutoView @JvmOverloads constructor(
         // Disegna la mappa come sfondo
         canvas.drawBitmap(mapBitmap, mapX, mapY, null)
 
+        if(DEBUG) {
+            // Disegna i limiti della pista
+            val trackPaint = Paint().apply {
+                color = Color.GREEN
+                strokeWidth = 10f // Spessore della linea
+            }
+            canvas.drawLine(
+                trackLeft,
+                0f,
+                trackLeft,
+                height.toFloat(),
+                trackPaint
+            ) // Linea sinistra
+            canvas.drawLine(
+                trackRight,
+                0f,
+                trackRight,
+                height.toFloat(),
+                trackPaint
+            ) // Linea destra
+        }
+
         // Aggiorna le posizioni in base all'accelerometro
         xPos1 += xAccel * 5 // Moltiplica per aumentare la sensibilità
         yPos1 += yAccel * 20
@@ -188,28 +218,29 @@ class AutoView @JvmOverloads constructor(
 
             // Vibrazione per 200 millisecondi con compatibilità API 26+
             if (vibrator.hasVibrator()) { // Controlla se il dispositivo supporta la vibrazione
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                    // Per API 26 e superiori
-                    val effect = VibrationEffect.createOneShot(
-                        200, // Durata in millisecondi
-                        VibrationEffect.DEFAULT_AMPLITUDE // Intensità predefinita
-                    )
-                    vibrator.vibrate(effect)
-                } else {
-                    // Per versioni precedenti ad API 26
-                    vibrator.vibrate(200)
-                }
+                // Per API 26 e superiori
+                val effect = VibrationEffect.createOneShot(
+                    200, // Durata in millisecondi
+                    VibrationEffect.DEFAULT_AMPLITUDE // Intensità predefinita
+                )
+                vibrator.vibrate(effect)
             }
         }
 
-        // Controlla se la macchina è fuori dai limiti della pista
-        if (isCarOutOfTrackBounds(xPos1, yPos1, carMask1, trackLeft, trackRight)) {
-            //xPos1 += (-xAccel * 5)
+        // Controlla se le macchine sono fuori dai limiti della pista
+        if (isCarOutOfTrackBounds(xPos1, carMask1, trackLeft, trackRight)) {
+            val widthCar1 = carMask1[0].size
+            val overshoot = if (xPos1 < trackLeft) xPos1 - trackLeft else trackRight - (xPos1 + widthCar1)
+            xPos1 = xPos1.coerceIn(trackLeft, trackRight - widthCar1)
+            xPos1 -= overshoot * 0.2f // Forza elastica
+
         }
 
-        // Controlla se la macchina è fuori dai limiti della pista
-        if (isCarOutOfTrackBounds(xPos2, yPos2, carMask2, trackLeft, trackRight)) {
-            //xPos2 += (-xAccel * 5)
+        if (isCarOutOfTrackBounds(xPos2, carMask2, trackLeft, trackRight)) {
+            val widthCar2 = carMask2[0].size
+            val overshoot = if (xPos2 < trackLeft) xPos2 - trackLeft else trackRight - (xPos2 + widthCar2)
+            xPos2 = xPos2.coerceIn(trackLeft, trackRight - widthCar2)
+            xPos2 -= overshoot * 0.2f // Forza elastica
         }
 
         // Mantieni le macchine all'interno dello schermo
@@ -248,8 +279,10 @@ class AutoView @JvmOverloads constructor(
     // Gestione dei valori dell'accelerometro
     override fun onSensorChanged(event: SensorEvent) {
         if (event.sensor.type == Sensor.TYPE_ACCELEROMETER) {
-            xAccel = -event.values[0] // Inverti l'asse X per sincronizzare col movimento naturale
-            yAccel = event.values[1]
+            xAccel = alpha * lastXAccel + (1 - alpha) * -event.values[0]
+            yAccel = alpha * lastYAccel + (1 - alpha) * (event.values[1]-3.14/2).toFloat()
+            lastXAccel = xAccel
+            lastYAccel = yAccel
         }
     }
 
