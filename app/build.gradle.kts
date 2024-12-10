@@ -4,7 +4,6 @@ plugins {
     //id("com.android.application")
     id("com.google.gms.google-services")
 
-
 }
 
 android {
@@ -55,6 +54,7 @@ android {
 
 dependencies {
 
+    implementation ("com.google.firebase:firebase-auth-ktx")
     implementation(platform("com.google.firebase:firebase-bom:33.6.0"))
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
