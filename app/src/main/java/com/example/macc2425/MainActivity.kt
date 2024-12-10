@@ -42,7 +42,7 @@ class MainActivity : ComponentActivity() {
         requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
 
         val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
-            .requestIdToken("1022350378167-out2qh6bj1hndddrb2hfovqvdmsejsap.apps.googleusercontent.com") // Default Web Client ID
+            .requestIdToken("1022350378167-hqtqf68d3d8njm507nob1rslvksr8pn9.apps.googleusercontent.com") // Default Web Client ID
             .requestEmail()
             .build()
 

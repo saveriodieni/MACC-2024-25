@@ -14,7 +14,9 @@ import android.os.VibrationEffect
 import android.os.Vibrator
 import android.util.AttributeSet
 import android.view.View
+import kotlin.math.abs
 import kotlin.math.sqrt
+import kotlin.random.Random
 
 class AutoView @JvmOverloads constructor(
     context: Context,
@@ -22,6 +24,7 @@ class AutoView @JvmOverloads constructor(
 ) : View(context, attrs), SensorEventListener {
 
     private val DEBUG = false
+    private val AUTODRIVE = true
 
     private var lastXAccel = 0f
     private var lastYAccel = 0f
@@ -53,10 +56,16 @@ class AutoView @JvmOverloads constructor(
 
     private val sensorManager = context.getSystemService(Context.SENSOR_SERVICE) as SensorManager
 
+    private val obstacles = mutableListOf<Pair<Float, Float>>() // Lista degli ostacoli
+    private val obstacleSize = 50f // Dimensione degli ostacoli
+
     // Fattore di scala per le immagini
     private val scaleFactor = 0.5f // Riduci tutte le immagini al 50%
 
     init {
+
+        initializeObstacles(5) // Genera 10 ostacoli iniziali
+
         // Carica e ridimensiona le immagini delle macchine
         var originalCarBitmap = BitmapFactory.decodeResource(resources, R.drawable.player1_image)
         carBitmap1 = Bitmap.createScaledBitmap(
@@ -75,7 +84,7 @@ class AutoView @JvmOverloads constructor(
 
         carMask1 = createCollisionMask(carBitmap1)
         carMask2 = createCollisionMask(carBitmap2)
-        
+
         // Carica e ridimensiona l'immagine della mappa
         val originalMapBitmap = BitmapFactory.decodeResource(resources, R.drawable.map_image)
         mapBitmap = Bitmap.createScaledBitmap(
@@ -189,11 +198,31 @@ class AutoView @JvmOverloads constructor(
         }
 
         // Aggiorna le posizioni in base all'accelerometro
-        xPos1 += xAccel * 5 // Moltiplica per aumentare la sensibilità
-        yPos1 += yAccel * 20
+        xPos1 += (xAccel * 2.5).toFloat() // Moltiplica per aumentare la sensibilità
+        yPos1 += yAccel * 10
 
-        xPos2 += xAccel * 5
-        yPos2 += yAccel * 20
+        if(AUTODRIVE){
+            // Aggiorna gli ostacoli
+            updateObstacles()
+
+            // Disegna gli ostacoli
+            val obstaclePaint = Paint().apply { color = Color.RED }
+            obstacles.forEach { (x, y) ->
+                canvas.drawRect(
+                    x - obstacleSize / 2, y - obstacleSize / 2,
+                    x + obstacleSize / 2, y + obstacleSize / 2,
+                    obstaclePaint
+                )
+            }
+
+            // Aggiorna posizione del secondo giocatore autonomamente
+            updateAutoPlayer()
+        }
+        else{
+            xPos2 += (xAccel * 2.5).toFloat()
+            yPos2 += yAccel * 10
+        }
+
 
         // Controlla la collisione
         if (checkMaskCollision(
@@ -207,14 +236,14 @@ class AutoView @JvmOverloads constructor(
             val length = sqrt(deltaX * deltaX + deltaY * deltaY).coerceAtLeast(1f)
 
             // Normalizza il vettore di spinta
-            val pushX = (deltaX / length) * 20f
-            val pushY = (deltaY / length) * 20f
+            val pushX = (deltaX / length) * 100f
+            val pushY = (deltaY / length) * 100f
 
             // Applica la spinta per separare le macchine
-            xPos1 += pushX * 5
-            yPos1 += pushY * 5
-            xPos2 -= pushX * 5
-            yPos2 -= pushY * 5
+            xPos1 += pushX
+            yPos1 += pushY
+            xPos2 -= pushX
+            yPos2 -= pushY
 
             // Vibrazione per 200 millisecondi con compatibilità API 26+
             if (vibrator.hasVibrator()) { // Controlla se il dispositivo supporta la vibrazione
@@ -294,4 +323,54 @@ class AutoView @JvmOverloads constructor(
     fun releaseSensor() {
         sensorManager.unregisterListener(this)
     }
+
+    private fun initializeObstacles(count: Int) {
+        obstacles.clear()
+        repeat(count) {
+            val x = Random.nextInt((trackLeft + obstacleSize).toInt(),
+                (trackRight - obstacleSize + 1).toInt()
+            )
+            val y = - Random.nextInt(0, height + 1)
+            obstacles.add(Pair(x.toFloat(), y.toFloat()))
+        }
+    }
+
+
+    private fun updateObstacles() {
+        for (i in obstacles.indices) {
+            val (x, y) = obstacles[i]
+            obstacles[i] = Pair(x, y + 5f) // Muovi l'ostacolo verso il basso
+        }
+
+        // Rimuovi gli ostacoli fuori dallo schermo e aggiungine di nuovi
+        obstacles.removeAll { it.second + obstacleSize > 2350 }
+        while (obstacles.size < 10) { // Mantieni sempre 10 ostacoli
+            val x = Random.nextInt((trackLeft + obstacleSize).toInt(),
+                (trackRight - obstacleSize + 1).toInt()
+            )
+            val y = - Random.nextInt((height + obstacleSize).toInt(),
+                (height + obstacleSize * 2 + 1).toInt()
+            )
+            obstacles.add(Pair(x.toFloat(), y.toFloat()))
+        }
+    }
+
+
+    private fun updateAutoPlayer() {
+        val targetY = height.toFloat() // Si muove verso il basso
+        val speedY = -5f
+        val speedX = 5f
+
+        // Cerca l'ostacolo più vicino lungo la traiettoria
+        val closestObstacle = obstacles.minByOrNull { abs(it.second - yPos2) }
+        closestObstacle?.let { (obstacleX, obstacleY) ->
+            if (obstacleY > yPos2 && obstacleY - yPos2 < obstacleSize * 2) { // Vicino a un ostacolo
+                if (xPos2 < obstacleX) xPos2 -= speedX else xPos2 += speedX // Evita l'ostacolo
+            }
+        }
+
+        // Continua a muoversi verso il basso
+        yPos2 += speedY
+    }
+
 }
