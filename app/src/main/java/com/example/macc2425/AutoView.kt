@@ -62,6 +62,9 @@ class AutoView @JvmOverloads constructor(
     // Fattore di scala per le immagini
     private val scaleFactor = 0.5f // Riduci tutte le immagini al 50%
 
+    private var offsetY = 0f // Posizione verticale dell'immagine
+    private val scrollSpeed = 5f // Velocità di scorrimento in pixel per frame
+
     init {
 
         initializeObstacles(5) // Genera 10 ostacoli iniziali
@@ -172,8 +175,28 @@ class AutoView @JvmOverloads constructor(
         val mapX = (width - mapBitmap.width) / 2f
         val mapY = (height - mapBitmap.height) / 2f
 
-        // Disegna la mappa come sfondo
-        canvas.drawBitmap(mapBitmap, mapX, mapY, null)
+        // Calcola la posizione corrente dell'immagine
+        val bitmapHeight = mapBitmap.height.toFloat()
+
+        // Disegna il bitmap nella posizione corrente
+        canvas.drawBitmap(mapBitmap, mapX, offsetY, Paint())
+
+        // Disegna una seconda copia dell'immagine sopra o sotto per il loop infinito
+        if (offsetY > 0) {
+            canvas.drawBitmap(mapBitmap, mapX, offsetY - bitmapHeight, Paint())
+        } else {
+            canvas.drawBitmap(mapBitmap, mapX, offsetY + bitmapHeight, Paint())
+        }
+
+        // Aggiorna la posizione verticale
+        offsetY += scrollSpeed
+
+        // Resetta l'offset per creare l'effetto di scorrimento infinito
+        if (offsetY >= bitmapHeight) {
+            offsetY = 0f
+        }
+
+
 
         if(DEBUG) {
             // Disegna i limiti della pista
