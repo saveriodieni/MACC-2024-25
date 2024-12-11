@@ -67,7 +67,8 @@ class AutoView @JvmOverloads constructor(
 
     private var numObstacles = 4
     private var offsetY = 0f // Posizione verticale dell'immagine
-    private val scrollSpeed = 5f // Velocità di scorrimento in pixel per frame
+    private var scrollSpeed = 0f // Velocità di scorrimento in pixel per frame
+
 
     init {
 
@@ -193,6 +194,7 @@ class AutoView @JvmOverloads constructor(
         }
 
         // Aggiorna la posizione verticale
+        scrollSpeed = maxOf (5 - yAccel, 5f)
         offsetY += scrollSpeed
 
         // Resetta l'offset per creare l'effetto di scorrimento infinito
@@ -262,7 +264,7 @@ class AutoView @JvmOverloads constructor(
         }
         else{
             xPos2 += (xAccel * 2.5).toFloat()
-            yPos2 += yAccel * 10
+            yPos2 += yAccel
         }
 
 
