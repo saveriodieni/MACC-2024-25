@@ -194,7 +194,7 @@ class AutoView @JvmOverloads constructor(
         }
 
         // Aggiorna la posizione verticale
-        scrollSpeed = maxOf (5 - yAccel, 5f)
+        scrollSpeed = 10 + maxOf (-2*yAccel, 0f)
         offsetY += scrollSpeed
 
         // Resetta l'offset per creare l'effetto di scorrimento infinito
