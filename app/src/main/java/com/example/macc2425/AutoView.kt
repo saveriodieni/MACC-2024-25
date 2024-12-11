@@ -18,6 +18,8 @@ import kotlin.math.abs
 import kotlin.math.sqrt
 import kotlin.random.Random
 
+// hint : implementare rotazione macchina basata sulla variazione del valore dell'accelerometro
+
 class AutoView @JvmOverloads constructor(
     context: Context,
     attrs: AttributeSet? = null
@@ -58,16 +60,18 @@ class AutoView @JvmOverloads constructor(
 
     private val obstacles = mutableListOf<Pair<Float, Float>>() // Lista degli ostacoli
     private val obstacleSize = 50f // Dimensione degli ostacoli
+    private var  targetX = 0f
 
     // Fattore di scala per le immagini
     private val scaleFactor = 0.5f // Riduci tutte le immagini al 50%
 
+    private var numObstacles = 4
     private var offsetY = 0f // Posizione verticale dell'immagine
     private val scrollSpeed = 5f // Velocità di scorrimento in pixel per frame
 
     init {
 
-        initializeObstacles(5) // Genera 10 ostacoli iniziali
+        initializeObstacles(numObstacles) // Genera 10 ostacoli iniziali
 
         // Carica e ridimensiona le immagini delle macchine
         var originalCarBitmap = BitmapFactory.decodeResource(resources, R.drawable.player1_image)
@@ -218,6 +222,21 @@ class AutoView @JvmOverloads constructor(
                 height.toFloat(),
                 trackPaint
             ) // Linea destra
+
+            canvas.drawLine(
+                trackLeft + 2*50f,
+                0f,
+                trackLeft + 2*50f,
+                height.toFloat(),
+                trackPaint
+            ) // Linea sinistra
+            canvas.drawLine(
+                trackRight - 2*50f,
+                0f,
+                trackRight - 2*50f,
+                height.toFloat(),
+                trackPaint
+            ) // Linea destra
         }
 
         // Aggiorna le posizioni in base all'accelerometro
@@ -225,8 +244,11 @@ class AutoView @JvmOverloads constructor(
         yPos1 += yAccel * 10
 
         if(AUTODRIVE){
+            // Aggiorna posizione del secondo giocatore autonomamente
+            val speedY=updateAutoPlayer()
+
             // Aggiorna gli ostacoli
-            updateObstacles()
+            updateObstacles(speedY)
 
             // Disegna gli ostacoli
             val obstaclePaint = Paint().apply { color = Color.RED }
@@ -237,9 +259,6 @@ class AutoView @JvmOverloads constructor(
                     obstaclePaint
                 )
             }
-
-            // Aggiorna posizione del secondo giocatore autonomamente
-            updateAutoPlayer()
         }
         else{
             xPos2 += (xAccel * 2.5).toFloat()
@@ -350,50 +369,81 @@ class AutoView @JvmOverloads constructor(
     private fun initializeObstacles(count: Int) {
         obstacles.clear()
         repeat(count) {
-            val x = Random.nextInt((trackLeft + obstacleSize).toInt(),
-                (trackRight - obstacleSize + 1).toInt()
+            val x = Random.nextInt((trackLeft + 2*obstacleSize).toInt(),
+                (trackRight - 2*obstacleSize + 1).toInt()
             )
             val y = - Random.nextInt(0, height + 1)
             obstacles.add(Pair(x.toFloat(), y.toFloat()))
         }
+        obstacles.sortBy { it.first } // Ordina gli ostacoli per il valore X
     }
 
-
-    private fun updateObstacles() {
+    private fun updateObstacles(speedY: Double) {
         for (i in obstacles.indices) {
             val (x, y) = obstacles[i]
-            obstacles[i] = Pair(x, y + 5f) // Muovi l'ostacolo verso il basso
+            obstacles[i] = Pair(x, y - speedY.toFloat()) // Muovi l'ostacolo verso il basso
         }
 
         // Rimuovi gli ostacoli fuori dallo schermo e aggiungine di nuovi
         obstacles.removeAll { it.second + obstacleSize > 2350 }
-        while (obstacles.size < 10) { // Mantieni sempre 10 ostacoli
-            val x = Random.nextInt((trackLeft + obstacleSize).toInt(),
-                (trackRight - obstacleSize + 1).toInt()
+        while (obstacles.size < numObstacles) { // Mantieni sempre 10 ostacoli
+            val x = Random.nextInt((trackLeft + 2*obstacleSize).toInt(),
+                (trackRight - 2*obstacleSize + 1).toInt()
             )
             val y = - Random.nextInt((height + obstacleSize).toInt(),
                 (height + obstacleSize * 2 + 1).toInt()
             )
             obstacles.add(Pair(x.toFloat(), y.toFloat()))
         }
+        obstacles.sortBy { it.first } // Ordina gli ostacoli per il valore X
     }
 
 
-    private fun updateAutoPlayer() {
-        val targetY = height.toFloat() // Si muove verso il basso
-        val speedY = -5f
-        val speedX = 5f
+    private fun updateAutoPlayer(): Double {
+        val widthCar2 = carMask2[0].size
 
-        // Cerca l'ostacolo più vicino lungo la traiettoria
-        val closestObstacle = obstacles.minByOrNull { abs(it.second - yPos2) }
-        closestObstacle?.let { (obstacleX, obstacleY) ->
-            if (obstacleY > yPos2 && obstacleY - yPos2 < obstacleSize * 2) { // Vicino a un ostacolo
-                if (xPos2 < obstacleX) xPos2 -= speedX else xPos2 += speedX // Evita l'ostacolo
+        val speedX = 5f // Velocità lungo l'asse X
+        val speedY = - 50 * Math.random() // Velocità lungo l'asse Y
+
+        // Aggiungi i bordi della pista come "ostacoli" virtuali
+        val extendedObstacles = listOf(Pair(trackLeft.toFloat() + 2*obstacleSize, 0f)) +
+                obstacles +
+                listOf(Pair(trackRight.toFloat() - 2*obstacleSize, 0f))
+
+        // Trova lo spazio più ampio
+        var widestSpace: Pair<Float, Float>? = null
+        var maxWidth = 0f
+        for (i in 0 until extendedObstacles.size - 1) {
+            val spaceStart = extendedObstacles[i].first + obstacleSize
+            val spaceEnd = extendedObstacles[i + 1].first - obstacleSize
+            val width = spaceEnd - spaceStart
+            if (width > maxWidth) {
+                maxWidth = width
+                widestSpace = Pair(spaceStart, spaceEnd)
             }
         }
 
+        // Muovi la macchina verso il centro dello spazio più ampio
+        widestSpace?.let { (start, end) ->
+            val targetX = (start + end) / 2
+            if (targetX != (xPos2 + widthCar2/2)) {
+                if (abs(targetX - (xPos2 + widthCar2/2))>speedX){
+                    if ((xPos2 + widthCar2/2) < targetX) xPos2 += speedX else xPos2 -= speedX
+                }
+            }
+            // targetX= xpos2 + widthcar2/2
+            """else if (targetX != xPos2) {
+                val offset= (targetX - xPos2)/2
+                xPos2 += offset
+            }"""
+        }
+
         // Continua a muoversi verso il basso
-        yPos2 += speedY
+        yPos2 += speedY.toFloat()
+
+        yPos2 = yPos2.coerceIn(10f, (height - carBitmap2.height).toFloat())
+
+        return speedY
     }
 
 }
