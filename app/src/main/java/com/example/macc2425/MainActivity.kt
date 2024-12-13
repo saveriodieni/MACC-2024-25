@@ -104,7 +104,7 @@ fun HomeScreen(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .padding(16.dp)
+            //.padding(16.dp)
     ) {
         // Sfondo con immagine
         Image(
@@ -124,22 +124,68 @@ fun HomeScreen(
         ) {
             // Titolo in alto al centro
             Spacer(modifier = Modifier.height(20.dp))
-            Text(
-                text = "MACChinine",
-                style = MaterialTheme.typography.headlineLarge.copy(
-                    fontWeight = FontWeight.Black, // Imposta il testo in grassetto
-                    color = Color.Red, // Colore rosso
-                    fontSize = 40.sp
-                ),
-                modifier = Modifier.align(Alignment.CenterHorizontally) // Centra il testo orizzontalmente
-            )
+            Box(
+                modifier = Modifier.align(Alignment.CenterHorizontally)
+            ) {
+                // Contorno nero (spostato in tutte le direzioni)
+                Text(
+                    text = "MACChinine",
+                    style = MaterialTheme.typography.headlineLarge.copy(
+                        fontWeight = FontWeight.Black,
+                        fontSize = 45.sp,
+                        color = Color.Black // Colore del contorno
+                    ),
+                    modifier = Modifier
+                        .offset(x = (-1).dp, y = (-1).dp)
+                )
+                Text(
+                    text = "MACChinine",
+                    style = MaterialTheme.typography.headlineLarge.copy(
+                        fontWeight = FontWeight.Black,
+                        fontSize = 45.sp,
+                        color = Color.Black // Colore del contorno
+                    ),
+                    modifier = Modifier
+                        .offset(x = 1.dp, y = (-1).dp)
+                )
+                Text(
+                    text = "MACChinine",
+                    style = MaterialTheme.typography.headlineLarge.copy(
+                        fontWeight = FontWeight.Black,
+                        fontSize = 45.sp,
+                        color = Color.Black // Colore del contorno
+                    ),
+                    modifier = Modifier
+                        .offset(x = (-1).dp, y = 1.dp)
+                )
+                Text(
+                    text = "MACChinine",
+                    style = MaterialTheme.typography.headlineLarge.copy(
+                        fontWeight = FontWeight.Black,
+                        fontSize = 45.sp,
+                        color = Color.Black // Colore del contorno
+                    ),
+                    modifier = Modifier
+                        .offset(x = 1.dp, y = 1.dp)
+                )
+                // Testo principale (verde)
+                Text(
+                    text = "MACChinine",
+                    style = MaterialTheme.typography.headlineLarge.copy(
+                        fontWeight = FontWeight.Black,
+                        fontSize = 45.sp,
+                        color = Color(0xFF71A871) // Colore principale
+                    )
+                )
+            }
 
-            Spacer(modifier = Modifier.height(270.dp)) // Distanza tra il titolo e il resto del contenuto
+
+            Spacer(modifier = Modifier.height(330.dp)) // Distanza tra il titolo e il resto del contenuto
 
             if (user != null) {
-                val userName = user?.displayName ?: "Guest"
+                val userName = user?.displayName ?.split(" ")?.get(0) ?: "Guest"
                 Text(
-                    text = "Welcome, $userName",
+                    text = "Welcome, $userName!",
                     style = MaterialTheme.typography.bodyLarge.copy(
                         fontSize = 25.sp, // Imposta una dimensione del testo più grande
                         fontWeight = FontWeight.Bold // Puoi anche impostare il grassetto
@@ -176,7 +222,7 @@ fun HomeScreen(
                         .height(60.dp) // Imposta un'altezza maggiore per il bottone
                 ) {
                     Text(
-                        text = "Sign in with Google",
+                        text = "Sign in with Google ",
                         style = MaterialTheme.typography.bodyLarge.copy(
                             fontSize = 25.sp, // Imposta una dimensione del testo più grande
                             fontWeight = FontWeight.Bold // Puoi anche impostare il grassetto
