@@ -69,6 +69,10 @@ class AutoView @JvmOverloads constructor(
     private var offsetY = 0f // Posizione verticale dell'immagine
     private var scrollSpeed = 0f // Velocità di scorrimento in pixel per frame
 
+    private var distance1 = 0f
+    private var distance2 = 0f
+
+    private val roadLength = 10000f
 
     init {
 
@@ -193,17 +197,6 @@ class AutoView @JvmOverloads constructor(
             canvas.drawBitmap(mapBitmap, mapX, offsetY + bitmapHeight, Paint())
         }
 
-        // Aggiorna la posizione verticale
-        scrollSpeed = 10 + maxOf (-2*yAccel, 0f)
-        offsetY += scrollSpeed
-
-        // Resetta l'offset per creare l'effetto di scorrimento infinito
-        if (offsetY >= bitmapHeight) {
-            offsetY = 0f
-        }
-
-
-
         if(DEBUG) {
             // Disegna i limiti della pista
             val trackPaint = Paint().apply {
@@ -243,14 +236,48 @@ class AutoView @JvmOverloads constructor(
 
         // Aggiorna le posizioni in base all'accelerometro
         xPos1 += (xAccel * 2.5).toFloat() // Moltiplica per aumentare la sensibilità
+        var deltaY1= yPos1
+        var deltaY2= yPos2
         yPos1 += yAccel * 10
+
+        // Verifica le collisioni con gli ostacoli per il primo giocatore
+        for ((obstacleX, obstacleY) in obstacles) {
+            if (checkObstacleCollision(
+                    carMask1, xPos1.toInt(), yPos1.toInt(),
+                    obstacleX, obstacleY, obstacleSize
+                )
+            ) {
+                // Gestisci la collisione: vibrazione, rallentamento o altro
+                //handleCollision()
+
+                yPos1 = obstacleY + obstacleSize
+            }
+        }
+
+        deltaY1 = yPos1 - deltaY1
+
+        // Aggiorna la posizione verticale
+        scrollSpeed = -deltaY1
+        offsetY += scrollSpeed
+        distance1 = maxOf(distance1-deltaY1, 0f)
+
+        // Resetta l'offset per creare l'effetto di scorrimento infinito
+        if (offsetY >= bitmapHeight) {
+            offsetY = 0f
+        }
+        if (offsetY < 0f) {
+            offsetY = 0f
+        }
+        if (distance1==0f) {
+            offsetY = 0f
+        }
 
         if(AUTODRIVE){
             // Aggiorna posizione del secondo giocatore autonomamente
             val speedY=updateAutoPlayer()
 
             // Aggiorna gli ostacoli
-            updateObstacles(speedY)
+            updateObstacles((minOf(deltaY1.toFloat(),offsetY)).toDouble())
 
             // Disegna gli ostacoli
             val obstaclePaint = Paint().apply { color = Color.RED }
@@ -316,20 +343,6 @@ class AutoView @JvmOverloads constructor(
             xPos2 -= overshoot * 0.2f // Forza elastica
         }
 
-        // Verifica le collisioni con gli ostacoli per il primo giocatore
-        for ((obstacleX, obstacleY) in obstacles) {
-            if (checkObstacleCollision(
-                    carMask1, xPos1.toInt(), yPos1.toInt(),
-                    obstacleX, obstacleY, obstacleSize
-                )
-            ) {
-                // Gestisci la collisione: vibrazione, rallentamento o altro
-                //handleCollision()
-
-                yPos1 = obstacleY + obstacleSize
-            }
-        }
-
         // Verifica le collisioni con gli ostacoli per il secondo giocatore
         for ((obstacleX, obstacleY) in obstacles) {
             if (checkObstacleCollision(
@@ -347,10 +360,16 @@ class AutoView @JvmOverloads constructor(
 
         // Mantieni le macchine all'interno dello schermo
         xPos1 = xPos1.coerceIn(0f, (width - carBitmap1.width).toFloat())
-        yPos1 = yPos1.coerceIn(0f, (height - carBitmap1.height).toFloat())
+        yPos1 = yPos1.coerceIn(150f, (height - carBitmap1.height).toFloat())
+
+        deltaY2 = yPos2 - deltaY2
+
+        distance2 = distance2-deltaY2
+
+
 
         xPos2 = xPos2.coerceIn(0f, (width - carBitmap2.width).toFloat())
-        yPos2 = yPos2.coerceIn(0f, (height - carBitmap2.height).toFloat())
+        yPos2 = distance1 - distance2 + yPos1
 
         // Disegna le macchine
         canvas.drawBitmap(carBitmap1, xPos1, yPos1, paint1)
@@ -471,8 +490,6 @@ class AutoView @JvmOverloads constructor(
 
         // Continua a muoversi verso il basso
         yPos2 += speedY.toFloat()
-
-        yPos2 = yPos2.coerceIn(10f, (height - carBitmap2.height).toFloat())
 
         return speedY
     }
