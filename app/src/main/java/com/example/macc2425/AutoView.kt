@@ -316,6 +316,35 @@ class AutoView @JvmOverloads constructor(
             xPos2 -= overshoot * 0.2f // Forza elastica
         }
 
+        // Verifica le collisioni con gli ostacoli per il primo giocatore
+        for ((obstacleX, obstacleY) in obstacles) {
+            if (checkObstacleCollision(
+                    carMask1, xPos1.toInt(), yPos1.toInt(),
+                    obstacleX, obstacleY, obstacleSize
+                )
+            ) {
+                // Gestisci la collisione: vibrazione, rallentamento o altro
+                //handleCollision()
+
+                yPos1 = obstacleY + obstacleSize
+            }
+        }
+
+        // Verifica le collisioni con gli ostacoli per il secondo giocatore
+        for ((obstacleX, obstacleY) in obstacles) {
+            if (checkObstacleCollision(
+                    carMask2, xPos2.toInt(), yPos2.toInt(),
+                    obstacleX, obstacleY, obstacleSize
+                )
+            ) {
+                // Gestisci la collisione: vibrazione, rallentamento o altro
+                //handleCollision()
+
+                yPos2 = obstacleY + obstacleSize
+            }
+        }
+
+
         // Mantieni le macchine all'interno dello schermo
         xPos1 = xPos1.coerceIn(0f, (width - carBitmap1.width).toFloat())
         yPos1 = yPos1.coerceIn(0f, (height - carBitmap1.height).toFloat())
@@ -446,6 +475,49 @@ class AutoView @JvmOverloads constructor(
         yPos2 = yPos2.coerceIn(10f, (height - carBitmap2.height).toFloat())
 
         return speedY
+    }
+
+    // Funzione per controllare la collisione con un singolo ostacolo
+    private fun checkObstacleCollision(
+        carMask: Array<BooleanArray>, carX: Int, carY: Int,
+        obstacleX: Float, obstacleY: Float, obstacleSize: Float
+    ): Boolean {
+        // Calcola i bordi dell'ostacolo
+        val obstacleLeft = obstacleX - obstacleSize / 2
+        val obstacleTop = obstacleY - obstacleSize / 2
+        val obstacleRight = obstacleX + obstacleSize / 2
+        val obstacleBottom = obstacleY + obstacleSize / 2
+
+        // Calcola l'area sovrapposta tra la maschera della macchina e l'ostacolo
+        val overlapLeft = maxOf(carX.toFloat(), obstacleLeft).toInt()
+        val overlapTop = maxOf(carY.toFloat(), obstacleTop).toInt()
+        val overlapRight = minOf(carX + carMask[0].size, obstacleRight.toInt())
+        val overlapBottom = minOf(carY + carMask.size, obstacleBottom.toInt())
+
+        // Verifica se c'è sovrapposizione
+        if (overlapLeft < overlapRight && overlapTop < overlapBottom) {
+            for (y in overlapTop until overlapBottom) {
+                for (x in overlapLeft until overlapRight) {
+                    val pixelX = x - carX
+                    val pixelY = y - carY
+
+                    if (carMask[pixelY][pixelX]) {
+                        return true // Collisione rilevata
+                    }
+                }
+            }
+        }
+        return false
+    }
+
+    private fun handleCollision() {
+        if (vibrator.hasVibrator()) {
+            val effect = VibrationEffect.createOneShot(
+                300, VibrationEffect.DEFAULT_AMPLITUDE
+            )
+            vibrator.vibrate(effect)
+        }
+        // Puoi aggiungere altre azioni come penalità al punteggio o cambio di velocità
     }
 
 }
