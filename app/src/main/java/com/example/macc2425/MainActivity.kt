@@ -40,6 +40,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.foundation.Image
 
+var userId: String = "ko4ca8iTOYR7ekhbbYZTLrtErsp2"
 
 class MainActivity : ComponentActivity() {
     private lateinit var googleSignInClient: GoogleSignInClient
@@ -82,7 +83,7 @@ fun AppNavigation(googleSignInClient: GoogleSignInClient, firebaseAuth: Firebase
 
     NavHost(navController = navController, startDestination = "home") {
         composable("home") {
-            HomeScreen(navController, googleSignInClient, firebaseAuth)
+            HomeScreen(navController, googleSignInClient ,firebaseAuth)
         }
         composable("login") {
             LoginScreen(navController)
@@ -111,7 +112,7 @@ fun HomeScreen(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            //.padding(16.dp)
+        //.padding(16.dp)
     ) {
         // Sfondo con immagine
         Image(
@@ -251,6 +252,17 @@ fun HomeScreen(
             Button(
                 onClick = {
                     navController.navigate("game")
+                    updateUserField(
+                        userId = userId,
+                        field = "points",
+                        newValue = 10,
+                        onSuccess = {
+                            Toast.makeText(context, "Valore aggiornato con successo!", Toast.LENGTH_SHORT).show()
+                        },
+                        onFailure = { exception ->
+                            Toast.makeText(context, "Errore: ${exception.message}", Toast.LENGTH_LONG).show()
+                        }
+                    )
                 },
                 modifier = Modifier
                     .padding(16.dp)
@@ -342,6 +354,7 @@ private fun handleSignInResult(
                     if (user != null) {
                         saveUserToFirestore(user)
                         onUserLoggedIn(user) // Aggiorna lo stato nell'UI
+                        userId = user.uid
                         Toast.makeText(context, "Login successful: ${user.email}", Toast.LENGTH_LONG).show()
                     }
                 } else {
@@ -372,3 +385,24 @@ private fun saveUserToFirestore(user: com.google.firebase.auth.FirebaseUser) {
             android.util.Log.e("FirestoreDB", "Failed to save user: ${e.message}")
         }
 }
+
+fun updateUserField(userId: String, field: String, newValue: Any, onSuccess: () -> Unit, onFailure: (Exception) -> Unit) {
+    // Ottieni una istanza di Firestore
+    val firestore = FirebaseFirestore.getInstance()
+
+    // Accedi al documento dell'utente tramite userId
+    val userDocument = firestore.collection("users").document(userId)
+
+    // Aggiorna il campo specifico
+    userDocument.update(field, newValue)
+        .addOnSuccessListener {
+            // Chiamata di successo
+            onSuccess()
+        }
+        .addOnFailureListener { exception ->
+            // Chiamata di fallimento
+            onFailure(exception)
+        }
+}
+
+
