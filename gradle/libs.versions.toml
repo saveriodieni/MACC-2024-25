@@ -12,6 +12,7 @@ appcompat = "1.7.0"
 navigation = "2.8.4"
 navigationRuntimeKtx = "2.8.4"
 firebaseFirestoreKtx = "25.1.1"
+media3CommonKtx = "1.5.1"
 
 [libraries]
 google-play-services-auth = "com.google.android.gms:play-services-auth:20.0.1"
@@ -33,6 +34,7 @@ androidx-appcompat = { group = "androidx.appcompat", name = "appcompat", version
 androidx-navigation-compose = { module = "androidx.navigation:navigation-compose", version.ref = "navigation" }
 androidx-navigation-runtime-ktx = { group = "androidx.navigation", name = "navigation-runtime-ktx", version.ref = "navigationRuntimeKtx" }
 firebase-firestore-ktx = { group = "com.google.firebase", name = "firebase-firestore-ktx", version.ref = "firebaseFirestoreKtx" }
+androidx-media3-common-ktx = { group = "androidx.media3", name = "media3-common-ktx", version.ref = "media3CommonKtx" }
 
 
 [plugins]
