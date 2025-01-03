@@ -45,6 +45,7 @@ var userId: String = "ko4ca8iTOYR7ekhbbYZTLrtErsp2"
 class MainActivity : ComponentActivity() {
     private lateinit var googleSignInClient: GoogleSignInClient
     private lateinit var firebaseAuth: FirebaseAuth
+    private lateinit var autoView: AutoView
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -67,6 +68,12 @@ class MainActivity : ComponentActivity() {
                 AppNavigation(googleSignInClient, firebaseAuth)
             }
         }
+    }
+
+    // Metodo per resettare il gioco
+    fun resetGame() {
+        autoView = AutoView(this)  // Crea una nuova istanza di AutoView
+        setContentView(autoView)   // Imposta AutoView come vista attiva
     }
 }
 
@@ -318,6 +325,9 @@ fun LoginScreen(navController: NavController) {
 
 @Composable
 fun CarAppScreen() {
+    val context = LocalContext.current
+
+    // Imposta la vista personalizzata AutoView
     AndroidView(
         factory = { context ->
             AutoView(context) // Inizializza la vista personalizzata
@@ -325,6 +335,7 @@ fun CarAppScreen() {
         modifier = Modifier.fillMaxSize()
     )
 }
+
 
 private fun handleSignInResult(
     task: Task<GoogleSignInAccount>,
