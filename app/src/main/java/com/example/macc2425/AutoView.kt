@@ -1,6 +1,8 @@
 package com.example.macc2425
 
+import android.app.Activity
 import android.content.Context
+import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Canvas
@@ -14,6 +16,7 @@ import android.os.VibrationEffect
 import android.os.Vibrator
 import android.util.AttributeSet
 import android.view.View
+import androidx.appcompat.app.AlertDialog
 import kotlin.math.abs
 import kotlin.math.sqrt
 import kotlin.random.Random
@@ -27,6 +30,9 @@ class AutoView @JvmOverloads constructor(
 
     private val DEBUG = false
     private val AUTODRIVE = true
+
+    private var gameOver = false // Variabile per controllare lo stato del gioco
+    private var winner: String? = null
 
     private var lastXAccel = 0f
     private var lastYAccel = 0f
@@ -74,7 +80,20 @@ class AutoView @JvmOverloads constructor(
 
     private val roadLength = 10000f
 
+    private var finishLineBitmap: Bitmap // Immagine del traguardo
+
+    var offsetY2 = 0f
+    // Carica e ridimensiona l'immagine del traguardo
+    val originalFinishLineBitmap = BitmapFactory.decodeResource(resources, R.drawable.end)
+
     init {
+
+        finishLineBitmap = Bitmap.createScaledBitmap(
+            originalFinishLineBitmap,
+            (originalFinishLineBitmap.width * scaleFactor).toInt(),
+            (originalFinishLineBitmap.height * scaleFactor).toInt(),
+            true
+        )
 
         initializeObstacles(numObstacles) // Genera 10 ostacoli iniziali
 
@@ -176,207 +195,231 @@ class AutoView @JvmOverloads constructor(
     }
 
     override fun onDraw(canvas: Canvas) {
-        super.onDraw(canvas)
+        if (!gameOver) {
+            super.onDraw(canvas)
 
-        canvas.drawColor(Color.parseColor("#ADD8E6"))
+            canvas.drawColor(Color.parseColor("#ADD8E6"))
 
-        // Calcola le coordinate per centrare la mappa
-        val mapX = (width - mapBitmap.width) / 2f
-        val mapY = (height - mapBitmap.height) / 2f
+            // Aggiungi una soglia per quando il traguardo deve apparire
+            val finishThreshold =
+                (originalFinishLineBitmap.height * scaleFactor)  // Quando distanza1 si avvicina a 1000, mostra il traguardo
 
-        // Calcola la posizione corrente dell'immagine
-        val bitmapHeight = mapBitmap.height.toFloat()
+            // Calcola le coordinate per centrare la mappa
+            val mapX = (width - mapBitmap.width) / 2f
+            val mapY = (height - mapBitmap.height) / 2f
 
-        // Disegna il bitmap nella posizione corrente
-        canvas.drawBitmap(mapBitmap, mapX, offsetY, Paint())
+            // Calcola la posizione corrente dell'immagine
+            val bitmapHeight = mapBitmap.height.toFloat()
 
-        // Disegna una seconda copia dell'immagine sopra o sotto per il loop infinito
-        if (offsetY > 0) {
-            canvas.drawBitmap(mapBitmap, mapX, offsetY - bitmapHeight, Paint())
-        } else {
-            canvas.drawBitmap(mapBitmap, mapX, offsetY + bitmapHeight, Paint())
-        }
+            // Disegna il bitmap nella posizione corrente
+            canvas.drawBitmap(mapBitmap, mapX, offsetY, Paint())
 
-        if(DEBUG) {
-            // Disegna i limiti della pista
-            val trackPaint = Paint().apply {
-                color = Color.GREEN
-                strokeWidth = 10f // Spessore della linea
+            // Disegna una seconda copia dell'immagine sopra o sotto per il loop infinito
+            if (offsetY > 0) {
+                canvas.drawBitmap(mapBitmap, mapX, offsetY - bitmapHeight, Paint())
+            } else {
+                canvas.drawBitmap(mapBitmap, mapX, offsetY + bitmapHeight, Paint())
             }
-            canvas.drawLine(
-                trackLeft,
-                0f,
-                trackLeft,
-                height.toFloat(),
-                trackPaint
-            ) // Linea sinistra
-            canvas.drawLine(
-                trackRight,
-                0f,
-                trackRight,
-                height.toFloat(),
-                trackPaint
-            ) // Linea destra
 
-            canvas.drawLine(
-                trackLeft + 2*50f,
-                0f,
-                trackLeft + 2*50f,
-                height.toFloat(),
-                trackPaint
-            ) // Linea sinistra
-            canvas.drawLine(
-                trackRight - 2*50f,
-                0f,
-                trackRight - 2*50f,
-                height.toFloat(),
-                trackPaint
-            ) // Linea destra
-        }
+            if (DEBUG) {
+                // Disegna i limiti della pista
+                val trackPaint = Paint().apply {
+                    color = Color.GREEN
+                    strokeWidth = 10f // Spessore della linea
+                }
+                canvas.drawLine(
+                    trackLeft,
+                    0f,
+                    trackLeft,
+                    height.toFloat(),
+                    trackPaint
+                ) // Linea sinistra
+                canvas.drawLine(
+                    trackRight,
+                    0f,
+                    trackRight,
+                    height.toFloat(),
+                    trackPaint
+                ) // Linea destra
 
-        // Aggiorna le posizioni in base all'accelerometro
-        xPos1 += (xAccel * 2.5).toFloat() // Moltiplica per aumentare la sensibilità
-        var deltaY1= yPos1
-        var deltaY2= yPos2
-        yPos1 += yAccel * 10
+                canvas.drawLine(
+                    trackLeft + 2 * 50f,
+                    0f,
+                    trackLeft + 2 * 50f,
+                    height.toFloat(),
+                    trackPaint
+                ) // Linea sinistra
+                canvas.drawLine(
+                    trackRight - 2 * 50f,
+                    0f,
+                    trackRight - 2 * 50f,
+                    height.toFloat(),
+                    trackPaint
+                ) // Linea destra
+            }
 
-        // Verifica le collisioni con gli ostacoli per il primo giocatore
-        for ((obstacleX, obstacleY) in obstacles) {
-            if (checkObstacleCollision(
+            // Aggiorna le posizioni in base all'accelerometro
+            xPos1 += (xAccel * 2.5).toFloat() // Moltiplica per aumentare la sensibilità
+            var deltaY1 = yPos1
+            var deltaY2 = yPos2
+            yPos1 += yAccel * 10
+
+            // Verifica le collisioni con gli ostacoli per il primo giocatore
+            for ((obstacleX, obstacleY) in obstacles) {
+                if (checkObstacleCollision(
+                        carMask1, xPos1.toInt(), yPos1.toInt(),
+                        obstacleX, obstacleY, obstacleSize
+                    )
+                ) {
+                    // Gestisci la collisione: vibrazione, rallentamento o altro
+                    //handleCollision()
+
+                    yPos1 = obstacleY + obstacleSize
+                }
+            }
+
+            deltaY1 = yPos1 - deltaY1
+
+            // Aggiorna la posizione verticale
+            scrollSpeed = -deltaY1
+            offsetY += scrollSpeed
+            distance1 = maxOf(distance1 - deltaY1, 0f)
+
+            // Resetta l'offset per creare l'effetto di scorrimento infinito
+            if (offsetY >= bitmapHeight) {
+                offsetY = 0f
+            }
+            if (offsetY < 0f) {
+                offsetY = 0f
+            }
+            if (distance1 == 0f) {
+                offsetY = 0f
+            }
+
+            if (AUTODRIVE) {
+                // Aggiorna posizione del secondo giocatore autonomamente
+                val speedY = updateAutoPlayer()
+
+                // Aggiorna gli ostacoli
+                updateObstacles((minOf(deltaY1.toFloat(), offsetY)).toDouble())
+
+                // Disegna gli ostacoli
+                val obstaclePaint = Paint().apply { color = Color.RED }
+                obstacles.forEach { (x, y) ->
+                    canvas.drawRect(
+                        x - obstacleSize / 2, y - obstacleSize / 2,
+                        x + obstacleSize / 2, y + obstacleSize / 2,
+                        obstaclePaint
+                    )
+                }
+            } else {
+                xPos2 += (xAccel * 2.5).toFloat()
+                yPos2 += yAccel
+            }
+
+
+            // Controlla la collisione
+            if (checkMaskCollision(
                     carMask1, xPos1.toInt(), yPos1.toInt(),
-                    obstacleX, obstacleY, obstacleSize
+                    carMask2, xPos2.toInt(), yPos2.toInt()
                 )
             ) {
-                // Gestisci la collisione: vibrazione, rallentamento o altro
-                //handleCollision()
+                // Calcola la direzione della spinta
+                val deltaX = xPos1 - xPos2
+                val deltaY = yPos1 - yPos2
 
-                yPos1 = obstacleY + obstacleSize
+                // Evita di dividere per zero
+                val length = sqrt(deltaX * deltaX + deltaY * deltaY).coerceAtLeast(1f)
+
+                // Normalizza il vettore di spinta
+                val pushX = (deltaX / length) * 100f
+                val pushY = (deltaY / length) * 100f
+
+                // Applica la spinta per separare le macchine
+                xPos1 += pushX
+                yPos1 += pushY
+                xPos2 -= pushX
+                yPos2 -= pushY
+
+                // Vibrazione per 200 millisecondi con compatibilità API 26+
+                if (vibrator.hasVibrator()) { // Controlla se il dispositivo supporta la vibrazione
+                    // Per API 26 e superiori
+                    val effect = VibrationEffect.createOneShot(
+                        200, // Durata in millisecondi
+                        VibrationEffect.DEFAULT_AMPLITUDE // Intensità predefinita
+                    )
+                    vibrator.vibrate(effect)
+                }
             }
-        }
 
-        deltaY1 = yPos1 - deltaY1
+            // Controlla se le macchine sono fuori dai limiti della pista
+            if (isCarOutOfTrackBounds(xPos1, carMask1, trackLeft, trackRight)) {
+                val widthCar1 = carMask1[0].size
+                val overshoot =
+                    if (xPos1 < trackLeft) xPos1 - trackLeft else trackRight - (xPos1 + widthCar1)
+                xPos1 = xPos1.coerceIn(trackLeft, trackRight - widthCar1)
+                xPos1 -= overshoot * 0.2f // Forza elastica
 
-        // Aggiorna la posizione verticale
-        scrollSpeed = -deltaY1
-        offsetY += scrollSpeed
-        distance1 = maxOf(distance1-deltaY1, 0f)
-
-        // Resetta l'offset per creare l'effetto di scorrimento infinito
-        if (offsetY >= bitmapHeight) {
-            offsetY = 0f
-        }
-        if (offsetY < 0f) {
-            offsetY = 0f
-        }
-        if (distance1==0f) {
-            offsetY = 0f
-        }
-
-        if(AUTODRIVE){
-            // Aggiorna posizione del secondo giocatore autonomamente
-            val speedY=updateAutoPlayer()
-
-            // Aggiorna gli ostacoli
-            updateObstacles((minOf(deltaY1.toFloat(),offsetY)).toDouble())
-
-            // Disegna gli ostacoli
-            val obstaclePaint = Paint().apply { color = Color.RED }
-            obstacles.forEach { (x, y) ->
-                canvas.drawRect(
-                    x - obstacleSize / 2, y - obstacleSize / 2,
-                    x + obstacleSize / 2, y + obstacleSize / 2,
-                    obstaclePaint
-                )
             }
-        }
-        else{
-            xPos2 += (xAccel * 2.5).toFloat()
-            yPos2 += yAccel
-        }
 
-
-        // Controlla la collisione
-        if (checkMaskCollision(
-                carMask1, xPos1.toInt(), yPos1.toInt(),
-                carMask2, xPos2.toInt(), yPos2.toInt())) {
-            // Calcola la direzione della spinta
-            val deltaX = xPos1 - xPos2
-            val deltaY = yPos1 - yPos2
-
-            // Evita di dividere per zero
-            val length = sqrt(deltaX * deltaX + deltaY * deltaY).coerceAtLeast(1f)
-
-            // Normalizza il vettore di spinta
-            val pushX = (deltaX / length) * 100f
-            val pushY = (deltaY / length) * 100f
-
-            // Applica la spinta per separare le macchine
-            xPos1 += pushX
-            yPos1 += pushY
-            xPos2 -= pushX
-            yPos2 -= pushY
-
-            // Vibrazione per 200 millisecondi con compatibilità API 26+
-            if (vibrator.hasVibrator()) { // Controlla se il dispositivo supporta la vibrazione
-                // Per API 26 e superiori
-                val effect = VibrationEffect.createOneShot(
-                    200, // Durata in millisecondi
-                    VibrationEffect.DEFAULT_AMPLITUDE // Intensità predefinita
-                )
-                vibrator.vibrate(effect)
+            if (isCarOutOfTrackBounds(xPos2, carMask2, trackLeft, trackRight)) {
+                val widthCar2 = carMask2[0].size
+                val overshoot =
+                    if (xPos2 < trackLeft) xPos2 - trackLeft else trackRight - (xPos2 + widthCar2)
+                xPos2 = xPos2.coerceIn(trackLeft, trackRight - widthCar2)
+                xPos2 -= overshoot * 0.2f // Forza elastica
             }
-        }
 
-        // Controlla se le macchine sono fuori dai limiti della pista
-        if (isCarOutOfTrackBounds(xPos1, carMask1, trackLeft, trackRight)) {
-            val widthCar1 = carMask1[0].size
-            val overshoot = if (xPos1 < trackLeft) xPos1 - trackLeft else trackRight - (xPos1 + widthCar1)
-            xPos1 = xPos1.coerceIn(trackLeft, trackRight - widthCar1)
-            xPos1 -= overshoot * 0.2f // Forza elastica
+            // Verifica le collisioni con gli ostacoli per il secondo giocatore
+            for ((obstacleX, obstacleY) in obstacles) {
+                if (checkObstacleCollision(
+                        carMask2, xPos2.toInt(), yPos2.toInt(),
+                        obstacleX, obstacleY, obstacleSize
+                    )
+                ) {
+                    // Gestisci la collisione: vibrazione, rallentamento o altro
+                    //handleCollision()
 
-        }
-
-        if (isCarOutOfTrackBounds(xPos2, carMask2, trackLeft, trackRight)) {
-            val widthCar2 = carMask2[0].size
-            val overshoot = if (xPos2 < trackLeft) xPos2 - trackLeft else trackRight - (xPos2 + widthCar2)
-            xPos2 = xPos2.coerceIn(trackLeft, trackRight - widthCar2)
-            xPos2 -= overshoot * 0.2f // Forza elastica
-        }
-
-        // Verifica le collisioni con gli ostacoli per il secondo giocatore
-        for ((obstacleX, obstacleY) in obstacles) {
-            if (checkObstacleCollision(
-                    carMask2, xPos2.toInt(), yPos2.toInt(),
-                    obstacleX, obstacleY, obstacleSize
-                )
-            ) {
-                // Gestisci la collisione: vibrazione, rallentamento o altro
-                //handleCollision()
-
-                yPos2 = obstacleY + obstacleSize
+                    yPos2 = obstacleY + obstacleSize
+                }
             }
+
+
+            // Mantieni le macchine all'interno dello schermo
+            xPos1 = xPos1.coerceIn(0f, (width - carBitmap1.width).toFloat())
+            yPos1 = yPos1.coerceIn(150f, (height - carBitmap1.height).toFloat())
+
+            deltaY2 = yPos2 - deltaY2
+
+            distance2 = distance2 - deltaY2
+
+
+
+            xPos2 = xPos2.coerceIn(0f, (width - carBitmap2.width).toFloat())
+            yPos2 = distance1 - distance2 + yPos1
+
+            if (distance1 >= roadLength - finishThreshold) {
+                // Disegna l'immagine del traguardo in una posizione specifica
+                if (distance1 == roadLength - finishThreshold) {
+                    offsetY2 = -(originalFinishLineBitmap.height * scaleFactor)
+                } else offsetY2 =
+                    distance1 - (roadLength - finishThreshold) - (originalFinishLineBitmap.height * scaleFactor)
+                val finishLineX =
+                    width / 2f - finishLineBitmap.width / 2f  // Posiziona il traguardo al centro
+                val finishLineY =
+                    offsetY2 //height - finishLineBitmap.height - 200f  // Posiziona il traguardo sopra la macchina
+                canvas.drawBitmap(finishLineBitmap, finishLineX, finishLineY, Paint())
+            }
+
+            // Disegna le macchine
+            canvas.drawBitmap(carBitmap1, xPos1, yPos1, paint1)
+            canvas.drawBitmap(carBitmap2, xPos2, yPos2, paint2)
+
+            checkWinner(distance1, distance2, roadLength, context)
+
+            // Ridisegna la vista
+            invalidate()
         }
-
-
-        // Mantieni le macchine all'interno dello schermo
-        xPos1 = xPos1.coerceIn(0f, (width - carBitmap1.width).toFloat())
-        yPos1 = yPos1.coerceIn(150f, (height - carBitmap1.height).toFloat())
-
-        deltaY2 = yPos2 - deltaY2
-
-        distance2 = distance2-deltaY2
-
-
-
-        xPos2 = xPos2.coerceIn(0f, (width - carBitmap2.width).toFloat())
-        yPos2 = distance1 - distance2 + yPos1
-
-        // Disegna le macchine
-        canvas.drawBitmap(carBitmap1, xPos1, yPos1, paint1)
-        canvas.drawBitmap(carBitmap2, xPos2, yPos2, paint2)
-
-        // Ridisegna la vista
-        invalidate()
     }
 
     override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
@@ -537,4 +580,31 @@ class AutoView @JvmOverloads constructor(
         // Puoi aggiungere altre azioni come penalità al punteggio o cambio di velocità
     }
 
+    fun checkWinner(player1Distance: Float, player2Distance: Float, roadLength: Float, context: Context) {
+        if (player1Distance > roadLength || player2Distance > roadLength) {
+            val winner = if (player1Distance > roadLength) "Player 1" else "Player 2"
+            val title = if (player1Distance > roadLength) "You Won!" else "You Lost!"
+            gameOver = true
+            val builder = AlertDialog.Builder(context)
+            builder.setTitle(title)
+            builder.setMessage("$winner crossed the finish line first!")
+            builder.setPositiveButton("OK") { dialog, _ ->
+                dialog.dismiss()
+                // Torna alla MainActivity
+                val intent = Intent(context, MainActivity::class.java)
+                intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+                context.startActivity(intent)
+            }
+            // Bottone Reset per ripristinare il gioco
+            builder.setNegativeButton("Reset") { dialog, _ ->
+                dialog.dismiss()
+                // Se desideri tornare alla stessa Activity e "resettarla", fare così:
+                if (context is MainActivity) {
+                    context.resetGame()  // Esegui il reset
+                }
+            }
+            builder.setCancelable(false)
+            builder.show()
+        }
+    }
 }
