@@ -6,6 +6,7 @@ import android.graphics.BitmapFactory
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
+import android.graphics.RectF
 import android.hardware.Sensor
 import android.hardware.SensorEvent
 import android.hardware.SensorEventListener
@@ -62,6 +63,8 @@ class AutoView @JvmOverloads constructor(
     private val obstacleSize = 50f // Dimensione degli ostacoli
     private var  targetX = 0f
 
+
+
     // Fattore di scala per le immagini
     private val scaleFactor = 0.5f // Riduci tutte le immagini al 50%
 
@@ -71,6 +74,17 @@ class AutoView @JvmOverloads constructor(
 
     private var distance1 = 0f
     private var distance2 = 0f
+
+    private val obstacleBitmap: Bitmap = Bitmap.createScaledBitmap(
+        BitmapFactory.decodeResource(resources, R.drawable.muretto),
+        50, // Larghezza desiderata
+        50, // Altezza desiderata
+        true // Usa interpolazione bilineare per un ridimensionamento più fluido
+    )
+
+
+    private val reusableRectF = RectF()
+
 
     private val roadLength = 10000f
 
@@ -279,15 +293,17 @@ class AutoView @JvmOverloads constructor(
             // Aggiorna gli ostacoli
             updateObstacles((minOf(deltaY1.toFloat(),offsetY)).toDouble())
 
-            // Disegna gli ostacoli
-            val obstaclePaint = Paint().apply { color = Color.RED }
+
             obstacles.forEach { (x, y) ->
-                canvas.drawRect(
-                    x - obstacleSize / 2, y - obstacleSize / 2,
-                    x + obstacleSize / 2, y + obstacleSize / 2,
-                    obstaclePaint
+                canvas.drawBitmap(
+                    obstacleBitmap,
+                    x - obstacleBitmap.width / 2,
+                    y - obstacleBitmap.height / 2,
+                    null
                 )
             }
+
+
         }
         else{
             xPos2 += (xAccel * 2.5).toFloat()
