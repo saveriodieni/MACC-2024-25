@@ -9,7 +9,6 @@
 
     <!-- Definizione dell'applicazione -->
     <application
-
         android:allowBackup="true"
         android:dataExtractionRules="@xml/data_extraction_rules"
         android:fullBackupContent="@xml/backup_rules"
@@ -29,7 +28,8 @@
             </intent-filter>
         </activity>
 
-
+        <!-- Definizione dell'Activity GameConfiguration -->
+        <activity android:name=".GameConfiguration" />
 
     </application>
 

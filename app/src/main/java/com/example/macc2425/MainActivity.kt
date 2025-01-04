@@ -1,6 +1,5 @@
 package com.example.macc2425
 
-import GameConfiguration
 import android.content.Intent
 import android.content.pm.ActivityInfo
 import android.os.Bundle
@@ -31,7 +30,6 @@ import com.google.firebase.auth.GoogleAuthProvider
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.android.gms.common.api.ApiException
 import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.compose.foundation.content.MediaType.Companion.Image
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
@@ -41,11 +39,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.foundation.Image
-import androidx.appcompat.app.AppCompatActivity
-import android.util.Log
-import retrofit2.Call
-import retrofit2.Callback
-import retrofit2.Response
 
 var userId: String = "ko4ca8iTOYR7ekhbbYZTLrtErsp2"
 
@@ -288,7 +281,7 @@ fun HomeScreen(
 
             Button(
                 onClick = {
-                    navController.navigate("Multiplayer")
+                    //navController.navigate("Multiplayer")
                     val intent = Intent(context, GameConfiguration::class.java)
                     context.startActivity(intent)
                 },
