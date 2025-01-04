@@ -1,5 +1,7 @@
 package com.example.macc2425
 
+import GameConfiguration
+import android.content.Intent
 import android.content.pm.ActivityInfo
 import android.os.Bundle
 import android.view.WindowManager
@@ -40,7 +42,6 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.foundation.Image
 import androidx.appcompat.app.AppCompatActivity
-import android.os.Bundle
 import android.util.Log
 import retrofit2.Call
 import retrofit2.Callback
@@ -276,6 +277,27 @@ fun HomeScreen(
             ) {
                 Text(
                     text = "Game",
+                    style = MaterialTheme.typography.bodyLarge.copy(
+                        fontSize = 25.sp, // Imposta una dimensione del testo più grande
+                        fontWeight = FontWeight.Bold // Puoi anche impostare il grassetto
+                    )
+                )
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Button(
+                onClick = {
+                    navController.navigate("Multiplayer")
+                    val intent = Intent(context, GameConfiguration::class.java)
+                    context.startActivity(intent)
+                },
+                modifier = Modifier
+                    .padding(16.dp)
+                    .height(60.dp) // Imposta un'altezza maggiore per il bottone
+            ) {
+                Text(
+                    text = "Multiplayer",
                     style = MaterialTheme.typography.bodyLarge.copy(
                         fontSize = 25.sp, // Imposta una dimensione del testo più grande
                         fontWeight = FontWeight.Bold // Puoi anche impostare il grassetto

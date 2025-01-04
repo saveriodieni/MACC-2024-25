@@ -102,8 +102,13 @@ class OnlineView @JvmOverloads constructor(
     private var distance1 = 0f
     private var distance2 = 0f
 
+    var obstacles: MutableList<Pair<Float, Float>> = mutableListOf()
+
+    val obstacleSize = 50f
+
     // remeber to get NumObstacles from cloud
     // get obstacles from cloud and generate them here
+
     private val obstacleBitmap: Bitmap = Bitmap.createScaledBitmap(
         BitmapFactory.decodeResource(resources, R.drawable.muretto),
         50, // Larghezza desiderata
@@ -380,7 +385,7 @@ class OnlineView @JvmOverloads constructor(
 
             if (AUTODRIVE) {
                 // get info from cloud
-                val speedY = updateAutoPlayer()
+                val speedY = 0f
 
                 // Aggiorna gli ostacoli
                 updateObstacles((minOf(deltaY1.toFloat(), offsetY)).toDouble())
@@ -535,22 +540,16 @@ class OnlineView @JvmOverloads constructor(
 
     // if collisions on client keep this, otherwise move it to the cloud
     private fun updateObstacles(speedY: Double) {
+        if (obstacles.isEmpty()){
+            //get obstacles from cloud HERE
+        }
+
         for (i in obstacles.indices) {
             val (x, y) = obstacles[i]
             obstacles[i] = Pair(x, y - speedY.toFloat()) // Muovi l'ostacolo verso il basso
         }
-
         // Rimuovi gli ostacoli fuori dallo schermo e aggiungine di nuovi
         obstacles.removeAll { it.second + obstacleSize > 2350 }
-        while (obstacles.size < numObstacles) { // Mantieni sempre 10 ostacoli
-            val x = Random.nextInt((trackLeft + 2*obstacleSize).toInt(),
-                (trackRight - 2*obstacleSize + 1).toInt()
-            )
-            val y = - Random.nextInt((height + obstacleSize).toInt(),
-                (height + obstacleSize * 2 + 1).toInt()
-            )
-            obstacles.add(Pair(x.toFloat(), y.toFloat()))
-        }
         obstacles.sortBy { it.first } // Ordina gli ostacoli per il valore X
     }
 
