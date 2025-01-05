@@ -264,8 +264,10 @@ class OnlineView @JvmOverloads constructor(
                             // Itera su ciascun giocatore nella mappa
                             for ((playerId, positionData) in positions!!) {
                                 // Accedi ai dati per ciascun giocatore
-                                xPos2=positionData.x_position
-                                distance2=positionData.distance
+                                if ( playerId != position_data1.player_id) {
+                                    xPos2 = positionData.x_position
+                                    distance2 = positionData.distance
+                                }
                             }
                         } else {
                             Log.d("GameApi", "No player positions found.")

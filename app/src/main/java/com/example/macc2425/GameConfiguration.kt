@@ -1,6 +1,8 @@
 package com.example.macc2425
 
+import android.content.pm.ActivityInfo
 import android.os.Bundle
+import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.*
@@ -28,6 +30,10 @@ import kotlinx.coroutines.*
 class GameConfiguration : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
+
+        // Mantieni lo schermo acceso
+        window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         setContent {
             Macc2425Theme {
                 MultiplayerAppNavigation()
@@ -220,7 +226,7 @@ fun WaitingScreen(
         scope.launch {
             while (!isGameReady) {
                 isGameReady = checkGameReadyFromServer(gameCode) // Controlla lo stato dal server
-                delay(2000) // Attendi 2 secondi prima di ripetere
+                //delay(2000) // Attendi 2 secondi prima di ripetere
             }
             navController.navigate("online/$gameCode") // Naviga alla schermata online
         }
