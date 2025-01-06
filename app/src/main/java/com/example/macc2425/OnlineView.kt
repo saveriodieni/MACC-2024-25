@@ -20,6 +20,8 @@ import android.hardware.Sensor
 import android.hardware.SensorEvent
 import android.hardware.SensorEventListener
 import android.hardware.SensorManager
+import android.os.Handler
+import android.os.Looper
 import android.os.VibrationEffect
 import android.os.Vibrator
 import android.util.AttributeSet
@@ -38,7 +40,8 @@ import kotlin.random.Random
 data class PositionData(
     val player_id: String,
     var x_position: Float,
-    var distance: Float
+    var distance: Float,
+    var timestamp: Long
 )
 
 interface GameApi {
@@ -70,8 +73,8 @@ class OnlineView @JvmOverloads constructor(
 
     private val vibrator = context.getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
 
-    private var xPos1 = 0f // Posizione iniziale sull'asse X
-    private var yPos1 = 500f // Posizione iniziale sull'asse Y
+    private var xPos1 = 100f // Posizione iniziale sull'asse X
+    private var yPos1 = 0f // Posizione iniziale sull'asse Y
     private val paint1 = Paint()
     private var carBitmap1: Bitmap // Immagine della macchina ridimensionata
 
@@ -89,8 +92,6 @@ class OnlineView @JvmOverloads constructor(
     private var mapBitmap: Bitmap // Immagine della mappa ridimensionata
 
     private val sensorManager = context.getSystemService(Context.SENSOR_SERVICE) as SensorManager
-
-    private var  targetX = 0f
 
     // Fattore di scala per le immagini
     private val scaleFactor = 0.5f // Riduci tutte le immagini al 50%
@@ -130,10 +131,12 @@ class OnlineView @JvmOverloads constructor(
     val originalFinishLineBitmap = BitmapFactory.decodeResource(resources, R.drawable.end)
 
     var position_data1 = PositionData(
-        player_id = "Player1",
+        player_id = "Player2",
         x_position= xPos1,
-        distance= distance1
+        distance= distance1,
+        timestamp = 0
     )
+    var currentTimestamp = System.currentTimeMillis()
     var positions: Map<String, PositionData>? = null
 
 
@@ -181,6 +184,88 @@ class OnlineView @JvmOverloads constructor(
         accelerometer?.let {
             sensorManager.registerListener(this, it, SensorManager.SENSOR_DELAY_GAME)
         }
+
+        // Configurazione del ciclo di aggiornamento periodico
+        val handler1 = Handler(Looper.getMainLooper())
+        val updateInterval: Long = 1 // 16ms per un aggiornamento fluido
+
+        val updateTask1 = object : Runnable {
+            override fun run() {
+                postPosition() // Funzione personalizzata per gestire gli aggiornamenti
+                handler.postDelayed(this, updateInterval)
+            }
+        }
+
+        // Avvia il ciclo di aggiornamento
+        handler1.post(updateTask1)
+
+        val handler2 = Handler(Looper.getMainLooper())
+
+        val updateTask2 = object : Runnable {
+            override fun run() {
+                getPosition() // Funzione personalizzata per gestire gli aggiornamenti
+                handler.postDelayed(this, updateInterval)
+            }
+        }
+
+        // Avvia il ciclo di aggiornamento
+        handler2.post(updateTask2)
+    }
+
+    private fun getPosition(){
+        RetrofitInstance.api.getPositions().enqueue(object : Callback<Map<String, PositionData>> {
+            @OptIn(UnstableApi::class)
+            override fun onResponse(
+                call: Call<Map<String, PositionData>>,
+                response: Response<Map<String, PositionData>>
+            ) {
+                if (response.isSuccessful) {
+                    positions = response.body()
+                    Log.d("GameApi", "Positions: $positions")
+                    // Controlla che la mappa non sia null o vuota
+                    if (positions != null && positions!!.isNotEmpty()) {
+                        // Itera su ciascun giocatore nella mappa
+                        for ((playerId, positionData) in positions!!) {
+                            // Accedi ai dati per ciascun giocatore
+                            if ( playerId != position_data1.player_id &&
+                                positionData.timestamp>currentTimestamp) {
+                                xPos2 = positionData.x_position
+                                distance2 = positionData.distance
+                                currentTimestamp = positionData.timestamp
+                            }
+                        }
+                    } else {
+                        Log.d("GameApi", "No player positions found.")
+                    }
+                } else {
+                    Log.e("GameApi", "Error: ${response.code()}")
+                }
+            }
+
+            @OptIn(UnstableApi::class)
+            override fun onFailure(call: Call<Map<String, PositionData>>, t: Throwable) {
+                Log.e("GameApi", "Failed to get positions", t)
+            }
+        })
+    }
+
+
+    private fun postPosition(){
+        RetrofitInstance.api.updatePosition(position_data1).enqueue(object : Callback<Unit> {
+            @OptIn(UnstableApi::class)
+            override fun onResponse(call: Call<Unit>, response: Response<Unit>) {
+                if (response.isSuccessful) {
+                    Log.d("GameApi", "Position updated successfully")
+                } else {
+                    Log.e("GameApi", "Error: ${response.code()}")
+                }
+            }
+
+            @OptIn(UnstableApi::class)
+            override fun onFailure(call: Call<Unit>, t: Throwable) {
+                Log.e("GameApi", "Failed to update position", t)
+            }
+        })
     }
 
     // handle collisions with cloud or without
@@ -250,43 +335,9 @@ class OnlineView @JvmOverloads constructor(
         if (!gameOver) {
             super.onDraw(canvas)
 
-            RetrofitInstance.api.getPositions().enqueue(object : Callback<Map<String, PositionData>> {
-                @OptIn(UnstableApi::class)
-                override fun onResponse(
-                    call: Call<Map<String, PositionData>>,
-                    response: Response<Map<String, PositionData>>
-                ) {
-                    if (response.isSuccessful) {
-                        positions = response.body()
-                        Log.d("GameApi", "Positions: $positions")
-                        // Controlla che la mappa non sia null o vuota
-                        if (positions != null && positions!!.isNotEmpty()) {
-                            // Itera su ciascun giocatore nella mappa
-                            for ((playerId, positionData) in positions!!) {
-                                // Accedi ai dati per ciascun giocatore
-                                if ( playerId != position_data1.player_id) {
-                                    xPos2 = positionData.x_position
-                                    distance2 = positionData.distance
-                                }
-                            }
-                        } else {
-                            Log.d("GameApi", "No player positions found.")
-                        }
-                    } else {
-                        Log.e("GameApi", "Error: ${response.code()}")
-                    }
-                }
-
-                @OptIn(UnstableApi::class)
-                override fun onFailure(call: Call<Map<String, PositionData>>, t: Throwable) {
-                    Log.e("GameApi", "Failed to get positions", t)
-                }
-            })
-
-
-
-
             canvas.drawColor(Color.parseColor("#ADD8E6"))
+
+            val lastYPos1 = yPos1
 
             // Aggiungi una soglia per quando il traguardo deve apparire
             val finishThreshold =
@@ -458,7 +509,7 @@ class OnlineView @JvmOverloads constructor(
             // distance 2 to get from the cloud distance2 = distance2 - deltaY2
 
             // use cloud info
-            yPos2 = distance1 - distance2 + yPos1
+            yPos2 = distance1 - distance2 + lastYPos1
 
             if (distance1 >= roadLength - finishThreshold) {
                 // Disegna l'immagine del traguardo in una posizione specifica
@@ -479,22 +530,7 @@ class OnlineView @JvmOverloads constructor(
 
             position_data1.x_position=xPos1
             position_data1.distance=distance1
-
-            RetrofitInstance.api.updatePosition(position_data1).enqueue(object : Callback<Unit> {
-                @OptIn(UnstableApi::class)
-                override fun onResponse(call: Call<Unit>, response: Response<Unit>) {
-                    if (response.isSuccessful) {
-                        Log.d("GameApi", "Position updated successfully")
-                    } else {
-                        Log.e("GameApi", "Error: ${response.code()}")
-                    }
-                }
-
-                @OptIn(UnstableApi::class)
-                override fun onFailure(call: Call<Unit>, t: Throwable) {
-                    Log.e("GameApi", "Failed to update position", t)
-                }
-            })
+            position_data1.timestamp=System.currentTimeMillis()
 
             //cloud handles hard decisions like check winner
             //checkWinner(distance1, distance2, roadLength, context)

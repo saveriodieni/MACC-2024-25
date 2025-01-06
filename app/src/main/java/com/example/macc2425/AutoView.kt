@@ -45,8 +45,8 @@ class AutoView @JvmOverloads constructor(
 
     private val vibrator = context.getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
 
-    private var xPos1 = 0f // Posizione iniziale sull'asse X
-    private var yPos1 = 500f // Posizione iniziale sull'asse Y
+    private var xPos1 = 100f // Posizione iniziale sull'asse X
+    private var yPos1 = 0f // Posizione iniziale sull'asse Y
     private val paint1 = Paint()
     private var carBitmap1: Bitmap // Immagine della macchina ridimensionata
 
