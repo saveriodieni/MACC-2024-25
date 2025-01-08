@@ -31,6 +31,7 @@ import androidx.appcompat.app.AlertDialog
 import androidx.media3.common.util.Log
 import androidx.media3.common.util.UnstableApi
 import org.json.JSONArray
+import org.json.JSONObject
 import retrofit2.Callback
 import retrofit2.Response
 import retrofit2.http.Query
@@ -130,25 +131,35 @@ class OnlineView @JvmOverloads constructor(
 
     private var lastDistance2 = 0f
 
-    private var obstacles: MutableList<Pair<Float, Float>> = mutableListOf()
+    private var obstacles: MutableMap<Int, MutableList<Pair<Float, Float>>> = mutableMapOf()
 
     fun setObstacles(obstaclesInput: String) {
-        // Rimuove tutti gli oggetti precedenti dalla lista
-        this.obstacles.clear()
-
         try {
-            // Converte la stringa JSON in un JSONArray
-            val jsonArray = JSONArray(obstaclesInput)
+            // Converte la stringa JSON in un JSONObject
+            val jsonObject = JSONObject(obstaclesInput)
 
-            // Aggiunge ogni oggetto Obstacle come Pair(x, y)
-            for (i in 0 until jsonArray.length()) {
-                val jsonObject = jsonArray.getJSONObject(i)
-                val x = jsonObject.getInt("x")
-                val y = jsonObject.getInt("y")
-                this.obstacles.add(Pair(x.toFloat(), y.toFloat()))
+            // Pulisce la mappa attuale
+            obstacles.clear()
+
+            // Itera attraverso le chiavi del JSONObject
+            jsonObject.keys().forEach { key ->
+                val level = key.toInt() // La chiave è il livello (Int)
+                val jsonArray = jsonObject.getJSONArray(key) // Ottiene l'array di ostacoli per il livello
+                val obstacleList = mutableListOf<Pair<Float, Float>>()
+
+                // Itera attraverso l'array di ostacoli
+                for (i in 0 until jsonArray.length()) {
+                    val pairArray = jsonArray.getJSONArray(i)
+                    val x = pairArray.getDouble(0).toFloat() // Primo valore (x)
+                    val y = pairArray.getDouble(1).toFloat() // Secondo valore (y)
+                    obstacleList.add(Pair(x, y))
+                }
+
+                // Aggiunge la lista di ostacoli al livello corrispondente
+                obstacles[level] = obstacleList
             }
         } catch (e: Exception) {
-            // Gestisci eventuali errori nel caso in cui la stringa non sia un JSON valido
+            // Gestisce eventuali errori nel parsing del JSON
             e.printStackTrace()
         }
     }
@@ -450,7 +461,7 @@ class OnlineView @JvmOverloads constructor(
 
             //remember to get obstacle info
             // Verifica le collisioni con gli ostacoli per il primo giocatore
-            for ((obstacleX, obstacleY) in obstacles) {
+            for ((obstacleX, obstacleY) in obstacles[myLevel]!!) {
                 if (checkObstacleCollision(
                         carMask1, xPos1.toInt(), yPos1.toInt(),
                         obstacleX, obstacleY, obstacleSize
@@ -494,7 +505,7 @@ class OnlineView @JvmOverloads constructor(
 
 
                 //memento mori
-                obstacles.forEach { (x, y) ->
+                obstacles[myLevel]?.forEach { (x, y) ->
                     canvas.drawBitmap(
                         obstacleBitmap,
                         x - obstacleBitmap.width / 2,
@@ -628,52 +639,25 @@ class OnlineView @JvmOverloads constructor(
     // if collisions on client keep this, otherwise move it to the cloud
     @OptIn(UnstableApi::class)
     private fun updateObstacles(speedY: Double) {
-        if (obstacles.isEmpty()) {
-            myLevel += 1
-            val gameCode = this.gameCode  // Sostituisci con il codice della partita
-            val level = this.myLevel  // Sostituisci con il livello corrente
+        val obstaclesLevel = obstacles[myLevel]
+        if (obstaclesLevel != null) {
+            for (i in obstaclesLevel.indices) {
+                val (x, y) = obstaclesLevel[i]
+                obstaclesLevel[i] = Pair(x, y - speedY.toFloat()) // Muovi l'ostacolo verso il basso
+            }
+            // Rimuovi gli ostacoli fuori dallo schermo
+            obstaclesLevel.removeAll { it.second + obstacleSize > 2350 }
 
-            RetrofitInstance.api.getObstacles(gameCode, level).enqueue(object : Callback<List<Map<String, Float>>> {
-                @OptIn(UnstableApi::class)
-                override fun onResponse(
-                    call: Call<List<Map<String, Float>>>,
-                    response: Response<List<Map<String, Float>>>
-                ) {
-                    if (response.isSuccessful) {
-                        val obstaclesData = response.body()
-                        if (obstaclesData != null && obstaclesData.isNotEmpty()) {
-                            // Ora obstaclesData contiene la lista degli ostacoli
-                            // Puoi usarla per aggiornare la tua lista `obstacles`
-                            obstacles.clear()  // Pulisce la lista degli ostacoli
-                            obstaclesData.forEach { obstacle ->
-                                val x = obstacle["x"] ?: 0f
-                                val y = obstacle["y"] ?: 0f
-                                obstacles.add(Pair(x, y))
-                            }
-                            Log.d("GameApi", "Ostacoli ottenuti: $obstacles")
-                        } else {
-                            Log.d("GameApi", "Nessun ostacolo trovato.")
-                        }
-                    } else {
-                        Log.e("GameApi", "Errore: ${response.code()}")
-                    }
-                }
+            if (obstaclesLevel.isEmpty()) {
+                myLevel += 1
+            }
 
-                @OptIn(UnstableApi::class)
-                override fun onFailure(call: Call<List<Map<String, Float>>>, t: Throwable) {
-                    Log.e("GameApi", "Impossibile ottenere gli ostacoli", t)
-                }
-            })
+            obstaclesLevel.sortBy { it.first } // Ordina gli ostacoli per il valore X
+            Log.i("GameState", obstacles.toString())
+        } else {
+            // Gestisci il caso in cui obstacles[myLevel] è null
+            Log.i("GameState", "No obstacles for level $myLevel")
         }
-
-        for (i in obstacles.indices) {
-            val (x, y) = obstacles[i]
-            obstacles[i] = Pair(x, y - speedY.toFloat()) // Muovi l'ostacolo verso il basso
-        }
-        // Rimuovi gli ostacoli fuori dallo schermo e aggiungine di nuovi
-        obstacles.removeAll { it.second + obstacleSize > 2350 }
-        obstacles.sortBy { it.first } // Ordina gli ostacoli per il valore X
-        Log.i("GameState", obstacles.toString())
     }
 
 

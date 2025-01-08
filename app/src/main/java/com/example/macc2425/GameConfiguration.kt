@@ -215,7 +215,7 @@ fun JoinGameScreen(navController: NavController) {
                     validateGameCode(
                         gameCode,
                         onSuccess = { roadLen, levels, obstacles ->
-                            val encodedObstacles = URLEncoder.encode(serializeObstaclesToJson(obstacles), "UTF-8")
+                            val encodedObstacles = URLEncoder.encode(obstacles)
                             navController.navigate(
                                 "online/$gameCode?roadLen=$roadLen&levels=$levels&obstacles=$encodedObstacles"
                             )
@@ -254,16 +254,12 @@ fun WaitingScreen(
                 isGameReady = result["isReady"] as Boolean
                 roadLen = result["roadLen"] as Int
                 levels = result["levels"] as Int
-                val tmp = result["obstacles"] as String
-                obstacles = parseObstaclesFromJson(tmp) // Aggiorna gli ostacoli con il risultato dal server
+                obstacles = result["obstacles"] as List<Obstacle>
             }
-
-            // Serializza gli ostacoli in formato JSON
-            val encodedObstacles = serializeObstaclesToJson(obstacles)
 
             // Naviga alla schermata online con tutti i parametri necessari
             navController.navigate(
-                "online/$gameCode?roadLen=$roadLen&levels=$levels&obstacles=$encodedObstacles"
+                "online/$gameCode?roadLen=$roadLen&levels=$levels&obstacles=$obstacles"
             )
         }
     }
@@ -349,7 +345,7 @@ fun sendGameConfigToServer(gameCode: String, levels: Int) {
 // Funzione per inviare il codice partita al server
 fun validateGameCode(
     gameCode: String,
-    onSuccess: (Int, Int, List<Obstacle>?) -> Unit, // Callback per passare roadLen e levels
+    onSuccess: (Int, Int, String) -> Unit, // Callback per passare roadLen e levels
     onError: () -> Unit
 ) {
     val url = "https://alternatus.pythonanywhere.com/validate"
@@ -378,11 +374,10 @@ fun validateGameCode(
                 val levels = jsonResponse.getInt("levels")
                 val roadLen = jsonResponse.getInt("roadLen")
                 val obstacles = jsonResponse.getString("obstacles")
-                val decodedObstacles = parseObstaclesFromJson(obstacles)
 
                 withContext(Dispatchers.Main) {
                     if (isValid) {
-                        onSuccess(roadLen, levels, decodedObstacles) // Passa roadLen e levels
+                        onSuccess(roadLen, levels, obstacles) // Passa roadLen e levels
                     } else {
                         onError()
                     }
