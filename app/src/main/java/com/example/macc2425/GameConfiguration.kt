@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
@@ -240,53 +241,64 @@ fun WaitingScreen(
     gameCode: String,
     navController: NavController
 ) {
-    val scope = rememberCoroutineScope() // Scope per gestire le coroutine
-    var isGameReady by remember { mutableStateOf(false) } // Stato per indicare se la partita è pronta
-    var roadLen by remember { mutableStateOf(0) } // Memorizza roadLen
-    var levels by remember { mutableStateOf(0) } // Memorizza levels
-    var obstacles by remember { mutableStateOf(emptyList<Obstacle>()) } // Memorizza gli ostacoli come lista
+    val scope = rememberCoroutineScope()
+    var isGameReady by rememberSaveable { mutableStateOf(false) }
+    var roadLen by remember { mutableStateOf(0) }
+    var levels by remember { mutableStateOf(0) }
+    var obstacles by remember { mutableStateOf("") }
 
-    LaunchedEffect(gameCode) {
-        scope.launch {
-            while (!isGameReady) {
-                // Simula una richiesta al server per controllare se la partita è pronta
-                val result = checkGameReadyFromServer(gameCode) // Ottieni i dettagli dal server
-                isGameReady = result["isReady"] as Boolean
-                roadLen = result["roadLen"] as Int
-                levels = result["levels"] as Int
-                obstacles = result["obstacles"] as List<Obstacle>
-            }
-
-            // Naviga alla schermata online con tutti i parametri necessari
+    LaunchedEffect(isGameReady) {
+        if (isGameReady) {
             navController.navigate(
                 "online/$gameCode?roadLen=$roadLen&levels=$levels&obstacles=$obstacles"
-            )
+            ) {
+                popUpTo("menu") { inclusive = true } // Torna alla schermata iniziale quando si esce
+            }
         }
     }
 
-    // Layout della schermata di attesa
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp),
-        verticalArrangement = Arrangement.Center,
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Text(
-            text = "Codice Partita: $gameCode",
-            style = MaterialTheme.typography.titleLarge
-        )
-
-        Spacer(modifier = Modifier.height(16.dp))
-
+    LaunchedEffect(gameCode) {
         if (!isGameReady) {
-            CircularProgressIndicator() // Indicatore di caricamento
+            scope.launch {
+                while (!isGameReady) {
+                    val result = checkGameReadyFromServer(gameCode)
+                    isGameReady = result["isReady"] as Boolean
+                    roadLen = result["roadLen"] as Int
+                    levels = result["levels"] as Int
+                    obstacles = result["obstacles"] as String
+                }
+            }
+        }
+    }
+
+    if (!isGameReady) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(16.dp),
+            verticalArrangement = Arrangement.Center,
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text(
+                text = "Codice Partita: $gameCode",
+                style = MaterialTheme.typography.titleLarge
+            )
+            Spacer(modifier = Modifier.height(16.dp))
+            CircularProgressIndicator()
             Spacer(modifier = Modifier.height(8.dp))
             Text(
                 text = "In attesa che gli altri giocatori si uniscano...",
                 style = MaterialTheme.typography.bodyMedium
             )
-        } else {
+        }
+    } else {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(16.dp),
+            verticalArrangement = Arrangement.Center,
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
             Text(
                 text = "Partita pronta! Reindirizzamento...",
                 style = MaterialTheme.typography.bodyMedium,
@@ -295,7 +307,6 @@ fun WaitingScreen(
         }
     }
 }
-
 
 @Composable
 fun OnlineScreen(gameCode: String, roadLen: Int, levels: Int, obstacles: String) {

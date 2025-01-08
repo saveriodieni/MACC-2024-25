@@ -127,6 +127,12 @@ class OnlineView @JvmOverloads constructor(
     private var distance1 = 0f
     private var distance2 = 0f
 
+    private lateinit var handler1: Handler
+    private lateinit var updateTask1: Runnable
+
+    private lateinit var handler2: Handler
+    private lateinit var updateTask2: Runnable
+
     private var myLevel = 0
 
     private var lastDistance2 = 0f
@@ -187,7 +193,7 @@ class OnlineView @JvmOverloads constructor(
     val originalFinishLineBitmap = BitmapFactory.decodeResource(resources, R.drawable.end)
 
     var position_data1 = PositionData(
-        player_id = "Player1",
+        player_id = "Player2",
         x_position= xPos1,
         distance= distance1,
         timestamp = 0
@@ -241,31 +247,52 @@ class OnlineView @JvmOverloads constructor(
             sensorManager.registerListener(this, it, SensorManager.SENSOR_DELAY_GAME)
         }
 
-        // Configurazione del ciclo di aggiornamento periodico
-        val handler1 = Handler(Looper.getMainLooper())
-        val updateInterval: Long = 1 // 16ms per un aggiornamento fluido
-
-        val updateTask1 = object : Runnable {
+        handler1 = Handler(Looper.getMainLooper())
+        val updateInterval: Long = 1
+        updateTask1 = object : Runnable {
             override fun run() {
-                postPosition() // Funzione personalizzata per gestire gli aggiornamenti
-                handler.postDelayed(this, updateInterval)
+                postPosition()
+                handler1.postDelayed(this, updateInterval)
             }
         }
 
-        // Avvia il ciclo di aggiornamento
+        handler2 = Handler(Looper.getMainLooper())
+        updateTask2 = object : Runnable {
+            override fun run() {
+                getPosition()
+                handler2.postDelayed(this, updateInterval)
+            }
+        }
+
+        // Avvia i cicli di aggiornamento quando la view è visibile
         handler1.post(updateTask1)
-
-        val handler2 = Handler(Looper.getMainLooper())
-
-        val updateTask2 = object : Runnable {
-            override fun run() {
-                getPosition() // Funzione personalizzata per gestire gli aggiornamenti
-                handler.postDelayed(this, updateInterval)
-            }
-        }
-
-        // Avvia il ciclo di aggiornamento
         handler2.post(updateTask2)
+    }
+
+    // Metodo per gestire il ciclo di vita della View
+    override fun onAttachedToWindow() {
+        super.onAttachedToWindow()
+
+        // Riavvia i cicli di aggiornamento quando la view è attaccata alla finestra
+        handler1.post(updateTask1)
+        handler2.post(updateTask2)
+
+        // Registra il listener dell'accelerometro
+        val accelerometer = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER)
+        accelerometer?.let {
+            sensorManager.registerListener(this, it, SensorManager.SENSOR_DELAY_GAME)
+        }
+    }
+
+    override fun onDetachedFromWindow() {
+        super.onDetachedFromWindow()
+
+        // Ferma i cicli di aggiornamento quando la view è rimossa
+        handler1.removeCallbacks(updateTask1)
+        handler2.removeCallbacks(updateTask2)
+
+        // Disiscrive il listener dell'accelerometro
+        sensorManager.unregisterListener(this)
     }
 
     private fun getPosition(){
@@ -387,6 +414,7 @@ class OnlineView @JvmOverloads constructor(
         return false
     }
 
+    @OptIn(UnstableApi::class)
     override fun onDraw(canvas: Canvas) {
         if (!gameOver) {
             super.onDraw(canvas)
@@ -461,7 +489,7 @@ class OnlineView @JvmOverloads constructor(
 
             //remember to get obstacle info
             // Verifica le collisioni con gli ostacoli per il primo giocatore
-            for ((obstacleX, obstacleY) in obstacles[myLevel]!!) {
+            obstacles[myLevel]?.forEach { (obstacleX, obstacleY) ->
                 if (checkObstacleCollision(
                         carMask1, xPos1.toInt(), yPos1.toInt(),
                         obstacleX, obstacleY, obstacleSize
@@ -472,7 +500,10 @@ class OnlineView @JvmOverloads constructor(
 
                     yPos1 = obstacleY + obstacleSize
                 }
+            } ?: run {
+                Log.e("Collision", "Ostacoli per il livello $myLevel sono null!")
             }
+
 
             deltaY1 = yPos1 - deltaY1
 
@@ -648,8 +679,8 @@ class OnlineView @JvmOverloads constructor(
             // Rimuovi gli ostacoli fuori dallo schermo
             obstaclesLevel.removeAll { it.second + obstacleSize > 2350 }
 
-            if (obstaclesLevel.isEmpty()) {
-                myLevel += 1
+            if (obstaclesLevel.isEmpty() && myLevel < levels - 1) {
+                    myLevel += 1
             }
 
             obstaclesLevel.sortBy { it.first } // Ordina gli ostacoli per il valore X
