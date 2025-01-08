@@ -30,11 +30,11 @@ import androidx.annotation.OptIn
 import androidx.appcompat.app.AlertDialog
 import androidx.media3.common.util.Log
 import androidx.media3.common.util.UnstableApi
+import org.json.JSONArray
 import retrofit2.Callback
 import retrofit2.Response
-import kotlin.math.abs
+import retrofit2.http.Query
 import kotlin.math.sqrt
-import kotlin.random.Random
 
 
 data class PositionData(
@@ -50,12 +50,35 @@ interface GameApi {
 
     @GET("positions")
     fun getPositions(): Call<Map<String, PositionData>>
+
+    @GET("obstacles")
+    fun getObstacles(
+        @Query("gameCode") gameCode: String,
+        @Query("level") level: Int
+    ): Call<List<Map<String, Float>>>  // Lista di mappe con chiavi String e valori Float
 }
 
 class OnlineView @JvmOverloads constructor(
     context: Context,
     attrs: AttributeSet? = null
 ) : View(context, attrs), SensorEventListener {
+
+    private var gameCode: String = ""
+    private var levels: Int = 0
+    // later choose how to handle this
+    private var roadLength = 10000f
+
+    fun setGameCode(gameCode: String) {
+        this.gameCode = gameCode
+    }
+
+    fun setRoadLen(roadLen: Int) {
+        this.roadLength = roadLen.toFloat()
+    }
+
+    fun setLevels(levels: Int){
+        this.levels = levels
+    }
 
     private val DEBUG = false
     private val AUTODRIVE = true
@@ -103,7 +126,33 @@ class OnlineView @JvmOverloads constructor(
     private var distance1 = 0f
     private var distance2 = 0f
 
-    var obstacles: MutableList<Pair<Float, Float>> = mutableListOf()
+    private var myLevel = 0
+
+    private var lastDistance2 = 0f
+
+    private var obstacles: MutableList<Pair<Float, Float>> = mutableListOf()
+
+    fun setObstacles(obstaclesInput: String) {
+        // Rimuove tutti gli oggetti precedenti dalla lista
+        this.obstacles.clear()
+
+        try {
+            // Converte la stringa JSON in un JSONArray
+            val jsonArray = JSONArray(obstaclesInput)
+
+            // Aggiunge ogni oggetto Obstacle come Pair(x, y)
+            for (i in 0 until jsonArray.length()) {
+                val jsonObject = jsonArray.getJSONObject(i)
+                val x = jsonObject.getInt("x")
+                val y = jsonObject.getInt("y")
+                this.obstacles.add(Pair(x.toFloat(), y.toFloat()))
+            }
+        } catch (e: Exception) {
+            // Gestisci eventuali errori nel caso in cui la stringa non sia un JSON valido
+            e.printStackTrace()
+        }
+    }
+
 
     val obstacleSize = 50f
 
@@ -120,10 +169,6 @@ class OnlineView @JvmOverloads constructor(
 
     private val reusableRectF = RectF()
 
-
-    // later choose how to handle this
-    private val roadLength = 10000f
-
     private var finishLineBitmap: Bitmap // Immagine del traguardo
 
     var offsetY2 = 0f
@@ -131,7 +176,7 @@ class OnlineView @JvmOverloads constructor(
     val originalFinishLineBitmap = BitmapFactory.decodeResource(resources, R.drawable.end)
 
     var position_data1 = PositionData(
-        player_id = "Player2",
+        player_id = "Player1",
         x_position= xPos1,
         distance= distance1,
         timestamp = 0
@@ -230,7 +275,7 @@ class OnlineView @JvmOverloads constructor(
                             if ( playerId != position_data1.player_id &&
                                 positionData.timestamp>currentTimestamp) {
                                 xPos2 = positionData.x_position
-                                distance2 = positionData.distance
+                                lastDistance2 = positionData.distance
                                 currentTimestamp = positionData.timestamp
                             }
                         }
@@ -425,6 +470,10 @@ class OnlineView @JvmOverloads constructor(
             offsetY += scrollSpeed
             distance1 = maxOf(distance1 - deltaY1, 0f)
 
+            distance2 /= 2
+
+            distance2 += lastDistance2/2
+
             // Resetta l'offset per creare l'effetto di scorrimento infinito
             if (offsetY >= bitmapHeight) {
                 offsetY = 0f
@@ -577,9 +626,44 @@ class OnlineView @JvmOverloads constructor(
     }
 
     // if collisions on client keep this, otherwise move it to the cloud
+    @OptIn(UnstableApi::class)
     private fun updateObstacles(speedY: Double) {
-        if (obstacles.isEmpty()){
-            //get obstacles from cloud HERE
+        if (obstacles.isEmpty()) {
+            myLevel += 1
+            val gameCode = this.gameCode  // Sostituisci con il codice della partita
+            val level = this.myLevel  // Sostituisci con il livello corrente
+
+            RetrofitInstance.api.getObstacles(gameCode, level).enqueue(object : Callback<List<Map<String, Float>>> {
+                @OptIn(UnstableApi::class)
+                override fun onResponse(
+                    call: Call<List<Map<String, Float>>>,
+                    response: Response<List<Map<String, Float>>>
+                ) {
+                    if (response.isSuccessful) {
+                        val obstaclesData = response.body()
+                        if (obstaclesData != null && obstaclesData.isNotEmpty()) {
+                            // Ora obstaclesData contiene la lista degli ostacoli
+                            // Puoi usarla per aggiornare la tua lista `obstacles`
+                            obstacles.clear()  // Pulisce la lista degli ostacoli
+                            obstaclesData.forEach { obstacle ->
+                                val x = obstacle["x"] ?: 0f
+                                val y = obstacle["y"] ?: 0f
+                                obstacles.add(Pair(x, y))
+                            }
+                            Log.d("GameApi", "Ostacoli ottenuti: $obstacles")
+                        } else {
+                            Log.d("GameApi", "Nessun ostacolo trovato.")
+                        }
+                    } else {
+                        Log.e("GameApi", "Errore: ${response.code()}")
+                    }
+                }
+
+                @OptIn(UnstableApi::class)
+                override fun onFailure(call: Call<List<Map<String, Float>>>, t: Throwable) {
+                    Log.e("GameApi", "Impossibile ottenere gli ostacoli", t)
+                }
+            })
         }
 
         for (i in obstacles.indices) {
@@ -589,6 +673,7 @@ class OnlineView @JvmOverloads constructor(
         // Rimuovi gli ostacoli fuori dallo schermo e aggiungine di nuovi
         obstacles.removeAll { it.second + obstacleSize > 2350 }
         obstacles.sortBy { it.first } // Ordina gli ostacoli per il valore X
+        Log.i("GameState", obstacles.toString())
     }
 
 

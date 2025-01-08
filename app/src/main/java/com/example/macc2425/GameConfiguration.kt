@@ -2,6 +2,7 @@ package com.example.macc2425
 
 import android.content.pm.ActivityInfo
 import android.os.Bundle
+import android.util.Log
 import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -15,9 +16,11 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.navigation.NavController
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
 import com.example.macc2425.ui.theme.Macc2425Theme
 import kotlinx.coroutines.CoroutineScope
 import java.util.*
@@ -26,6 +29,7 @@ import kotlinx.coroutines.withContext
 import okhttp3.*
 import org.json.JSONObject
 import kotlinx.coroutines.*
+import java.net.URLEncoder
 
 class GameConfiguration : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -60,9 +64,19 @@ fun MultiplayerAppNavigation() {
             val gameCode = backStackEntry.arguments?.getString("gameCode") ?: ""
             WaitingScreen(gameCode, navController)
         }
-        composable("online/{gameCode}"){ backStackEntry ->
+        composable(
+            "online/{gameCode}?roadLen={roadLen}&levels={levels}&obstacles={obstacles}",
+            arguments = listOf(
+                navArgument("roadLen") { type = NavType.IntType },
+                navArgument("levels") { type = NavType.IntType },
+                navArgument("obstacles") { type = NavType.StringType }
+            )
+        ) { backStackEntry ->
             val gameCode = backStackEntry.arguments?.getString("gameCode") ?: ""
-            OnlineScreen(gameCode)
+            val roadLen = backStackEntry.arguments?.getInt("roadLen") ?: 0
+            val levels = backStackEntry.arguments?.getInt("levels") ?: 0
+            val obstacles = backStackEntry.arguments?.getString("obstacles") ?: "[]"
+            OnlineScreen(gameCode, roadLen, levels, obstacles)
         }
     }
 }
@@ -200,8 +214,15 @@ fun JoinGameScreen(navController: NavController) {
                 if (gameCode.isNotEmpty()) {
                     validateGameCode(
                         gameCode,
-                        onSuccess = { navController.navigate("online/$gameCode") },
-                        onError = { errorMessage = "Codice non valido. Riprova." }
+                        onSuccess = { roadLen, levels, obstacles ->
+                            val encodedObstacles = URLEncoder.encode(serializeObstaclesToJson(obstacles), "UTF-8")
+                            navController.navigate(
+                                "online/$gameCode?roadLen=$roadLen&levels=$levels&obstacles=$encodedObstacles"
+                            )
+                        },
+                        onError = {
+                            errorMessage = "Codice non valido. Riprova."
+                        }
                     )
                 } else {
                     errorMessage = "Inserisci un codice valido."
@@ -221,17 +242,33 @@ fun WaitingScreen(
 ) {
     val scope = rememberCoroutineScope() // Scope per gestire le coroutine
     var isGameReady by remember { mutableStateOf(false) } // Stato per indicare se la partita è pronta
+    var roadLen by remember { mutableStateOf(0) } // Memorizza roadLen
+    var levels by remember { mutableStateOf(0) } // Memorizza levels
+    var obstacles by remember { mutableStateOf(emptyList<Obstacle>()) } // Memorizza gli ostacoli come lista
 
     LaunchedEffect(gameCode) {
         scope.launch {
             while (!isGameReady) {
-                isGameReady = checkGameReadyFromServer(gameCode) // Controlla lo stato dal server
-                //delay(2000) // Attendi 2 secondi prima di ripetere
+                // Simula una richiesta al server per controllare se la partita è pronta
+                val result = checkGameReadyFromServer(gameCode) // Ottieni i dettagli dal server
+                isGameReady = result["isReady"] as Boolean
+                roadLen = result["roadLen"] as Int
+                levels = result["levels"] as Int
+                val tmp = result["obstacles"] as String
+                obstacles = parseObstaclesFromJson(tmp) // Aggiorna gli ostacoli con il risultato dal server
             }
-            navController.navigate("online/$gameCode") // Naviga alla schermata online
+
+            // Serializza gli ostacoli in formato JSON
+            val encodedObstacles = serializeObstaclesToJson(obstacles)
+
+            // Naviga alla schermata online con tutti i parametri necessari
+            navController.navigate(
+                "online/$gameCode?roadLen=$roadLen&levels=$levels&obstacles=$encodedObstacles"
+            )
         }
     }
 
+    // Layout della schermata di attesa
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -263,12 +300,20 @@ fun WaitingScreen(
     }
 }
 
+
 @Composable
-fun OnlineScreen(gameCode: String){
-    // Vista personalizzata OnlineView
+fun OnlineScreen(gameCode: String, roadLen: Int, levels: Int, obstacles: String) {
+
+    Log.i("PreGameState", obstacles)
+
     AndroidView(
         factory = { context ->
-            OnlineView(context) // Inizializza la vista personalizzata
+            OnlineView(context).apply {
+                setGameCode(gameCode)
+                setRoadLen(roadLen)
+                setLevels(levels)
+                setObstacles(obstacles) // Passa gli ostacoli a OnlineView
+            }
         },
         modifier = Modifier.fillMaxSize()
     )
@@ -304,10 +349,10 @@ fun sendGameConfigToServer(gameCode: String, levels: Int) {
 // Funzione per inviare il codice partita al server
 fun validateGameCode(
     gameCode: String,
-    onSuccess: () -> Unit,
+    onSuccess: (Int, Int, List<Obstacle>?) -> Unit, // Callback per passare roadLen e levels
     onError: () -> Unit
 ) {
-    val url = "https://alternatus.pythonanywhere.com/validate" // Sostituisci con il tuo URL
+    val url = "https://alternatus.pythonanywhere.com/validate"
     val json = JSONObject().apply {
         put("gameCode", gameCode)
     }
@@ -327,38 +372,40 @@ fun validateGameCode(
             val response = client.newCall(request).execute()
             val responseBody = response.body()?.string()
 
-            // Controlla se la risposta è valida
             if (response.isSuccessful && responseBody != null) {
                 val jsonResponse = JSONObject(responseBody)
                 val isValid = jsonResponse.getBoolean("valid")
+                val levels = jsonResponse.getInt("levels")
+                val roadLen = jsonResponse.getInt("roadLen")
+                val obstacles = jsonResponse.getString("obstacles")
+                val decodedObstacles = parseObstaclesFromJson(obstacles)
 
                 withContext(Dispatchers.Main) {
                     if (isValid) {
-                        onSuccess() // Naviga alla schermata successiva
+                        onSuccess(roadLen, levels, decodedObstacles) // Passa roadLen e levels
                     } else {
-                        onError() // Mostra errore
+                        onError()
                     }
                 }
             } else {
                 withContext(Dispatchers.Main) {
-                    onError() // Mostra errore in caso di fallimento
+                    onError()
                 }
             }
         } catch (e: Exception) {
             e.printStackTrace()
             withContext(Dispatchers.Main) {
-                onError() // Mostra errore in caso di eccezione
+                onError()
             }
         }
     }
 }
 
-// Funzione per verificare se la partita è pronta sul server
-suspend fun checkGameReadyFromServer(gameCode: String): Boolean {
-    val url = "https://alternatus.pythonanywhere.com/game" // Sostituisci con il tuo URL
+suspend fun checkGameReadyFromServer(gameCode: String): Map<String, Any> {
+    val url = "https://alternatus.pythonanywhere.com/game" // URL del server
     val client = OkHttpClient()
     val request = Request.Builder()
-        .url("$url?gameCode=$gameCode") // Passa il codice della partita come parametro
+        .url("$url?gameCode=$gameCode") // Passa il codice partita come parametro
         .get()
         .build()
 
@@ -367,12 +414,27 @@ suspend fun checkGameReadyFromServer(gameCode: String): Boolean {
         if (response.isSuccessful) {
             val responseBody = response.body()?.string()
             val jsonResponse = JSONObject(responseBody ?: "{}")
-            jsonResponse.getBoolean("isReady") // True se la partita è pronta
+            mapOf(
+                "isReady" to jsonResponse.getBoolean("isReady"), // True se la partita è pronta
+                "roadLen" to jsonResponse.getInt("roadLen"),     // Valore di roadLen
+                "levels" to jsonResponse.getInt("levels"),       // Valore di levels
+                "obstacles" to jsonResponse.getString("obstacles") // Ostacoli come JSON
+            )
         } else {
-            false
+            mapOf(
+                "isReady" to false,
+                "roadLen" to 0,
+                "levels" to 0,
+                "obstacles" to "[]"
+            )
         }
     } catch (e: Exception) {
         e.printStackTrace()
-        false
+        mapOf(
+            "isReady" to false,
+            "roadLen" to 0,
+            "levels" to 0,
+            "obstacles" to "[]"
+        )
     }
 }
