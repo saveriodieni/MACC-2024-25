@@ -36,10 +36,12 @@ import retrofit2.Callback
 import retrofit2.Response
 import retrofit2.http.Query
 import kotlin.math.sqrt
+import com.google.firebase.firestore.FirebaseFirestore
 
 
 data class PositionData(
     val player_id: String,
+    val gameCode: String,
     var x_position: Float,
     var distance: Float,
     var timestamp: Long
@@ -47,10 +49,14 @@ data class PositionData(
 
 interface GameApi {
     @POST("positions")
-    fun updatePosition(@Body positionData: PositionData): Call<Unit>
+    fun updatePosition(
+        @Body positionData: PositionData
+    ): Call<Unit>
 
     @GET("positions")
-    fun getPositions(): Call<Map<String, PositionData>>
+    fun getPositions(
+        @Query("gameCode") gameCode: String
+    ): Call<Map<String, PositionData>>
 
     @GET("obstacles")
     fun getObstacles(
@@ -139,6 +145,9 @@ class OnlineView @JvmOverloads constructor(
 
     private var obstacles: MutableMap<Int, MutableList<Pair<Float, Float>>> = mutableMapOf()
 
+    private var sharedPref = context.getSharedPreferences("MyAppPrefs", Context.MODE_PRIVATE)
+    private var savedUid = sharedPref.getString("uid", null)
+
     fun setObstacles(obstaclesInput: String) {
         try {
             // Converte la stringa JSON in un JSONObject
@@ -193,7 +202,8 @@ class OnlineView @JvmOverloads constructor(
     val originalFinishLineBitmap = BitmapFactory.decodeResource(resources, R.drawable.end)
 
     var position_data1 = PositionData(
-        player_id = "Player2",
+        player_id = savedUid.toString(),
+        gameCode = this.gameCode,
         x_position= xPos1,
         distance= distance1,
         timestamp = 0
@@ -296,7 +306,7 @@ class OnlineView @JvmOverloads constructor(
     }
 
     private fun getPosition(){
-        RetrofitInstance.api.getPositions().enqueue(object : Callback<Map<String, PositionData>> {
+        RetrofitInstance.api.getPositions(this.gameCode).enqueue(object : Callback<Map<String, PositionData>> {
             @OptIn(UnstableApi::class)
             override fun onResponse(
                 call: Call<Map<String, PositionData>>,
@@ -338,7 +348,38 @@ class OnlineView @JvmOverloads constructor(
             @OptIn(UnstableApi::class)
             override fun onResponse(call: Call<Unit>, response: Response<Unit>) {
                 if (response.isSuccessful) {
-                    Log.d("GameApi", "Position updated successfully")
+                    try {
+                        val jsonArray = JSONArray(response) // Parsing della risposta come JSONArray
+
+                        for (i in 0 until jsonArray.length()) {
+                            val jsonObject = jsonArray.getJSONObject(i) // Ottieni il singolo oggetto JSON
+                            val message = jsonObject.getString("message") // Estrai il campo "message"
+
+                            when (message) {
+                                "You lose" -> {
+                                    checkWinner(false, context)
+                                    updatePlayerDataToFirestore(false, context)
+
+                                    // Aggiungi qui la logica per "You lose"
+                                }
+                                "You win" -> {
+                                    checkWinner(true, context)
+                                    updatePlayerDataToFirestore(true, context)
+                                    // Aggiungi qui la logica per "You win"
+                                }
+                                "Position updated successfully" -> {
+                                    Log.d("GameApi", "Position updated successfully")
+                                }
+                                else -> {
+                                    println("Messaggio sconosciuto: $message")
+                                    // Gestione di altri messaggi non previsti
+                                }
+                            }
+                        }
+                    } catch (e: Exception) {
+                        println("Errore durante il parsing del JSONArray: ${e.message}")
+                    }
+
                 } else {
                     Log.e("GameApi", "Error: ${response.code()}")
                 }
@@ -680,7 +721,7 @@ class OnlineView @JvmOverloads constructor(
             obstaclesLevel.removeAll { it.second + obstacleSize > 2350 }
 
             if (obstaclesLevel.isEmpty() && myLevel < levels - 1) {
-                    myLevel += 1
+                myLevel += 1
             }
 
             obstaclesLevel.sortBy { it.first } // Ordina gli ostacoli per il valore X
@@ -736,32 +777,24 @@ class OnlineView @JvmOverloads constructor(
     }
 
     // get winner from cloud and use this
-    fun checkWinner(player1Distance: Float, player2Distance: Float, roadLength: Float, context: Context) {
-        if (player1Distance > roadLength || player2Distance > roadLength) {
-            val winner = if (player1Distance > roadLength) "Player 1" else "Player 2"
-            val title = if (player1Distance > roadLength) "You Won!" else "You Lost!"
-            gameOver = true
-            val builder = AlertDialog.Builder(context)
-            builder.setTitle(title)
-            builder.setMessage("$winner crossed the finish line first!")
-            builder.setPositiveButton("OK") { dialog, _ ->
-                dialog.dismiss()
-                // Torna alla MainActivity
-                val intent = Intent(context, MainActivity::class.java)
-                intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
-                context.startActivity(intent)
-            }
-            // Bottone Reset per ripristinare il gioco
-            builder.setNegativeButton("Reset") { dialog, _ ->
-                dialog.dismiss()
-                // Se desideri tornare alla stessa Activity e "resettarla", fare così:
-                if (context is MainActivity) {
-                    context.resetGame()  // Esegui il reset
-                }
-            }
-            builder.setCancelable(false)
-            builder.show()
+    fun checkWinner(isWinner:Boolean, context: Context) {
+
+        val winner = if (isWinner) "Player 1" else "Player 2"
+        val title = if (isWinner) "You Won!" else "You Lost!"
+        gameOver = true
+        val builder = AlertDialog.Builder(context)
+        builder.setTitle(title)
+        builder.setMessage("$winner crossed the finish line first!")
+        builder.setPositiveButton("OK") { dialog, _ ->
+            dialog.dismiss()
+            // Torna alla MainActivity
+            val intent = Intent(context, MainActivity::class.java)
+            intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+            context.startActivity(intent)
         }
+        // show
+        builder.setCancelable(false)
+        builder.show()
     }
 }
 
@@ -778,46 +811,42 @@ object RetrofitInstance {
     }
 }
 
-/*
-        // Aggiorna la posizione del giocatore
-        val positionData = PositionData(
-            player_id = "player1",
-            x_position = 50.0f,
-            distance_traveled = 100.0f
+
+// Funzione per recuperare l'UID da SharedPreferences e fare l'update su Firestore
+@OptIn(UnstableApi::class)
+private fun updatePlayerDataToFirestore(isWinner:Boolean, context: Context) {
+    val sharedPreferences = context.getSharedPreferences("YourSharedPreferences", Context.MODE_PRIVATE)
+    val uid = sharedPreferences.getString("uid", null)
+    var point = sharedPreferences.getInt("points", 0)
+
+    if (uid != null) {
+        val db = FirebaseFirestore.getInstance()
+
+        if (isWinner) {
+            point+=10
+        }
+        else {
+            point-=5
+        }
+
+        // Crea i dati che vuoi aggiornare
+        val playerData = hashMapOf(
+            "uid" to uid, // Sostituisci con i dati effettivi che vuoi aggiornare
+            "points" to point // Esempio di un dato da aggiornare
         )
 
-        RetrofitInstance.api.updatePosition(positionData).enqueue(object : Callback<Unit> {
-            override fun onResponse(call: Call<Unit>, response: Response<Unit>) {
-                if (response.isSuccessful) {
-                    Log.d("GameApi", "Position updated successfully")
-                } else {
-                    Log.e("GameApi", "Error: ${response.code()}")
-                }
+        // Esegui l'update su Firestore
+        db.collection("users").document(uid)  // Usa l'UID per accedere al documento dell'utente
+            .update(playerData as Map<String, Any>)
+            .addOnSuccessListener {
+                // L'update è andato a buon fine
+                Log.d("Firestore", "Player data updated successfully")
             }
-
-            override fun onFailure(call: Call<Unit>, t: Throwable) {
-                Log.e("GameApi", "Failed to update position", t)
+            .addOnFailureListener { exception ->
+                // Errore nell'update
+                Log.e("Firestore", "Error updating player data", exception)
             }
-        })
-
-        // Recupera le posizioni di tutti i giocatori
-        RetrofitInstance.api.getPositions().enqueue(object : Callback<Map<String, PositionData>> {
-            override fun onResponse(
-                call: Call<Map<String, PositionData>>,
-                response: Response<Map<String, PositionData>>
-            ) {
-                if (response.isSuccessful) {
-                    val positions = response.body()
-                    Log.d("GameApi", "Positions: $positions")
-                } else {
-                    Log.e("GameApi", "Error: ${response.code()}")
-                }
-            }
-
-            override fun onFailure(call: Call<Map<String, PositionData>>, t: Throwable) {
-                Log.e("GameApi", "Failed to get positions", t)
-            }
-        })
+    } else {
+        Log.e("SharedPreferences", "UID not found in SharedPreferences")
     }
- */
-
+}

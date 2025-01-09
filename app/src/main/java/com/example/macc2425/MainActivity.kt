@@ -1,8 +1,10 @@
 package com.example.macc2425
 
+import android.content.Context
 import android.content.Intent
 import android.content.pm.ActivityInfo
 import android.os.Bundle
+import android.util.Log
 import android.view.WindowManager
 import android.widget.Toast
 import androidx.activity.ComponentActivity
@@ -40,7 +42,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.foundation.Image
 
-var userId: String = "ko4ca8iTOYR7ekhbbYZTLrtErsp2"
+var userId: String = ""
 
 class MainActivity : ComponentActivity() {
     private lateinit var googleSignInClient: GoogleSignInClient
@@ -252,7 +254,7 @@ fun HomeScreen(
             Button(
                 onClick = {
                     navController.navigate("game")
-                    updateUserField(
+                   /* updateUserField(
                         userId = userId,
                         field = "points",
                         newValue = 10,
@@ -262,7 +264,7 @@ fun HomeScreen(
                         onFailure = { exception ->
                             Toast.makeText(context, "Errore: ${exception.message}", Toast.LENGTH_LONG).show()
                         }
-                    )
+                    )*/
                 },
                 modifier = Modifier
                     .padding(16.dp)
@@ -377,6 +379,13 @@ private fun handleSignInResult(
                         onUserLoggedIn(user) // Aggiorna lo stato nell'UI
                         userId = user.uid
                         Toast.makeText(context, "Login successful: ${user.email}", Toast.LENGTH_LONG).show()
+
+                        // Salva l'UID nelle SharedPreferences
+                        val sharedPref = context.getSharedPreferences("MyAppPrefs", Context.MODE_PRIVATE)
+                        sharedPref.edit().putString("uid", user.uid).apply()
+                        val point = getUserPointsFromFirestore(user.uid)
+                        sharedPref.edit().putInt("points", point).apply()
+
                     }
                 } else {
                     Toast.makeText(context, "Authentication failed: ${authTask.exception?.message}", Toast.LENGTH_LONG).show()
@@ -385,6 +394,7 @@ private fun handleSignInResult(
     } catch (e: ApiException) {
         Toast.makeText(context, "Google sign-in failed: ${e.message}", Toast.LENGTH_SHORT).show()
     }
+
 }
 
 private fun saveUserToFirestore(user: com.google.firebase.auth.FirebaseUser) {
@@ -395,6 +405,7 @@ private fun saveUserToFirestore(user: com.google.firebase.auth.FirebaseUser) {
         "uid" to user.uid,
         "name" to user.displayName,
         "email" to user.email,
+        "points" to 0,
         "photoUrl" to user.photoUrl?.toString()
     )
 
@@ -424,6 +435,27 @@ fun updateUserField(userId: String, field: String, newValue: Any, onSuccess: () 
             // Chiamata di fallimento
             onFailure(exception)
         }
+}
+
+// Funzione per recuperare i punti da Firestore (o da un'altra fonte)
+private fun getUserPointsFromFirestore(userId: String): Int {
+    // Puoi implementare una logica per recuperare i punti da Firestore. Ad esempio:
+    val db = FirebaseFirestore.getInstance()
+    var points = 0  // Valore di default
+
+    db.collection("users")
+        .document(userId)
+        .get()
+        .addOnSuccessListener { document ->
+            if (document.exists()) {
+                points = document.getLong("points")?.toInt() ?: 0 // Recupera i punti o usa 0 se non trovati
+            }
+        }
+        .addOnFailureListener { exception ->
+            Log.e("Firestore", "Error getting points: ${exception.message}")
+        }
+
+    return points
 }
 
 
