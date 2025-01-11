@@ -93,7 +93,15 @@ fun AppNavigation(googleSignInClient: GoogleSignInClient, firebaseAuth: Firebase
         composable("game") {
             CarAppScreen()
         }
+        composable("Ranking") {
+            RankingScreen(navController, googleSignInClient ,firebaseAuth)
+        }
     }
+}
+
+@Composable
+fun <NavHostController> RankingScreen(navController: NavHostController, googleSignInClient: GoogleSignInClient, firebaseAuth: FirebaseAuth) {
+    // to do
 }
 
 @Composable
@@ -190,7 +198,7 @@ fun HomeScreen(
             }
 
 
-            Spacer(modifier = Modifier.height(330.dp)) // Distanza tra il titolo e il resto del contenuto
+            Spacer(modifier = Modifier.height(310.dp)) // Distanza tra il titolo e il resto del contenuto
 
             if (user != null) {
                 val userName = user?.displayName ?.split(" ")?.get(0) ?: "Guest"
@@ -254,17 +262,17 @@ fun HomeScreen(
             Button(
                 onClick = {
                     navController.navigate("game")
-                   /* updateUserField(
-                        userId = userId,
-                        field = "points",
-                        newValue = 10,
-                        onSuccess = {
-                            Toast.makeText(context, "Valore aggiornato con successo!", Toast.LENGTH_SHORT).show()
-                        },
-                        onFailure = { exception ->
-                            Toast.makeText(context, "Errore: ${exception.message}", Toast.LENGTH_LONG).show()
-                        }
-                    )*/
+                    /* updateUserField(
+                         userId = userId,
+                         field = "points",
+                         newValue = 10,
+                         onSuccess = {
+                             Toast.makeText(context, "Valore aggiornato con successo!", Toast.LENGTH_SHORT).show()
+                         },
+                         onFailure = { exception ->
+                             Toast.makeText(context, "Errore: ${exception.message}", Toast.LENGTH_LONG).show()
+                         }
+                     )*/
                 },
                 modifier = Modifier
                     .padding(16.dp)
@@ -284,8 +292,13 @@ fun HomeScreen(
             Button(
                 onClick = {
                     //navController.navigate("Multiplayer")
-                    val intent = Intent(context, GameConfiguration::class.java)
-                    context.startActivity(intent)
+                    if(userId == ""){
+                        Toast.makeText(context, "You must be logged to play online", Toast.LENGTH_SHORT).show()
+                    }
+                    else{
+                        val intent = Intent(context, GameConfiguration::class.java)
+                        context.startActivity(intent)
+                    }
                 },
                 modifier = Modifier
                     .padding(16.dp)
@@ -293,6 +306,25 @@ fun HomeScreen(
             ) {
                 Text(
                     text = "Multiplayer",
+                    style = MaterialTheme.typography.bodyLarge.copy(
+                        fontSize = 25.sp, // Imposta una dimensione del testo più grande
+                        fontWeight = FontWeight.Bold // Puoi anche impostare il grassetto
+                    )
+                )
+            }
+
+            Spacer(modifier = Modifier.height(8.dp)) // Distanza tra il titolo e il resto del contenuto
+
+            Button(
+                onClick = {
+                    navController.navigate("Ranking")
+                },
+                modifier = Modifier
+                    .padding(16.dp)
+                    .height(60.dp) // Imposta un'altezza maggiore per il bottone
+            ) {
+                Text(
+                    text = "Game Ranking",
                     style = MaterialTheme.typography.bodyLarge.copy(
                         fontSize = 25.sp, // Imposta una dimensione del testo più grande
                         fontWeight = FontWeight.Bold // Puoi anche impostare il grassetto
@@ -457,5 +489,3 @@ private fun getUserPointsFromFirestore(userId: String): Int {
 
     return points
 }
-
-

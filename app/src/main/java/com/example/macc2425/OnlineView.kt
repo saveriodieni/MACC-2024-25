@@ -838,6 +838,8 @@ private fun updatePlayerDataToFirestore(isWinner:Boolean, context: Context) {
             "points" to point // Esempio di un dato da aggiornare
         )
 
+        sharedPreferences.edit().putInt("points", point).apply()
+
         // Esegui l'update su Firestore
         db.collection("users").document(uid)  // Usa l'UID per accedere al documento dell'utente
             .update(playerData as Map<String, Any>)
