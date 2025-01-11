@@ -41,7 +41,7 @@ import com.google.firebase.firestore.FirebaseFirestore
 
 data class PositionData(
     val player_id: String,
-    val gameCode: String,
+    var game_code: String,
     var x_position: Float,
     var distance: Float,
     var timestamp: Long
@@ -57,6 +57,11 @@ interface GameApi {
     fun getPositions(
         @Query("gameCode") gameCode: String
     ): Call<Map<String, PositionData>>
+
+    @GET("winner")
+    fun getWinner(
+        @Query("gameCode") gameCode: String
+    ): Call<Map<String, String>>
 
     @GET("obstacles")
     fun getObstacles(
@@ -141,12 +146,14 @@ class OnlineView @JvmOverloads constructor(
 
     private var myLevel = 0
 
+    private var isWinner = false
+
     private var lastDistance2 = 0f
 
     private var obstacles: MutableMap<Int, MutableList<Pair<Float, Float>>> = mutableMapOf()
 
     private var sharedPref = context.getSharedPreferences("MyAppPrefs", Context.MODE_PRIVATE)
-    private var savedUid = sharedPref.getString("uid", null)
+    private var savedUid = sharedPref.getString("uid", "player1")
 
     fun setObstacles(obstaclesInput: String) {
         try {
@@ -203,7 +210,7 @@ class OnlineView @JvmOverloads constructor(
 
     var position_data1 = PositionData(
         player_id = savedUid.toString(),
-        gameCode = this.gameCode,
+        game_code = this.gameCode,
         x_position= xPos1,
         distance= distance1,
         timestamp = 0
@@ -342,44 +349,12 @@ class OnlineView @JvmOverloads constructor(
         })
     }
 
-
     private fun postPosition(){
         RetrofitInstance.api.updatePosition(position_data1).enqueue(object : Callback<Unit> {
             @OptIn(UnstableApi::class)
             override fun onResponse(call: Call<Unit>, response: Response<Unit>) {
                 if (response.isSuccessful) {
-                    try {
-                        val jsonArray = JSONArray(response) // Parsing della risposta come JSONArray
-
-                        for (i in 0 until jsonArray.length()) {
-                            val jsonObject = jsonArray.getJSONObject(i) // Ottieni il singolo oggetto JSON
-                            val message = jsonObject.getString("message") // Estrai il campo "message"
-
-                            when (message) {
-                                "You lose" -> {
-                                    checkWinner(false, context)
-                                    updatePlayerDataToFirestore(false, context)
-
-                                    // Aggiungi qui la logica per "You lose"
-                                }
-                                "You win" -> {
-                                    checkWinner(true, context)
-                                    updatePlayerDataToFirestore(true, context)
-                                    // Aggiungi qui la logica per "You win"
-                                }
-                                "Position updated successfully" -> {
-                                    Log.d("GameApi", "Position updated successfully")
-                                }
-                                else -> {
-                                    println("Messaggio sconosciuto: $message")
-                                    // Gestione di altri messaggi non previsti
-                                }
-                            }
-                        }
-                    } catch (e: Exception) {
-                        println("Errore durante il parsing del JSONArray: ${e.message}")
-                    }
-
+                    Log.d("GameApi", "Position updated successfully")
                 } else {
                     Log.e("GameApi", "Error: ${response.code()}")
                 }
@@ -660,15 +635,43 @@ class OnlineView @JvmOverloads constructor(
             canvas.drawBitmap(carBitmap1, xPos1, yPos1, paint1)
             canvas.drawBitmap(carBitmap2, xPos2, yPos2, paint2)
 
+            position_data1.game_code=this.gameCode
             position_data1.x_position=xPos1
             position_data1.distance=distance1
             position_data1.timestamp=System.currentTimeMillis()
 
-            //cloud handles hard decisions like check winner
-            //checkWinner(distance1, distance2, roadLength, context)
+            RetrofitInstance.api.getWinner(this.gameCode).enqueue(object : Callback<Map<String, String>> {
+                @OptIn(UnstableApi::class)
+                override fun onResponse(
+                    call: Call<Map<String, String>>,
+                    response: Response<Map<String, String>>
+                ) {
+                    if (response.isSuccessful) {
+                        val winner = response.body()?.get("winner") // Assicurati che la chiave sia "winner"
+                        if (winner != "") {
+                            Log.d("GameApi", "Winner: $winner")
+                            gameOver=true
+                            if (winner != savedUid.toString()) isWinner = false
+                            else isWinner = true
+                        } else {
+                            Log.d("GameApi", "Winner not found in response")
+                        }
+                    } else {
+                        Log.e("GameApi", "Error: ${response.code()}")
+                    }
+                }
+
+                override fun onFailure(call: Call<Map<String, String>>, t: Throwable) {
+                    Log.e("GameApi", "API call failed: ${t.message}")
+                }
+            })
 
             // Ridisegna la vista
             invalidate()
+        }
+        else {
+            checkWinner(isWinner, context)
+            updatePlayerDataToFirestore(isWinner, context)
         }
     }
 
@@ -815,8 +818,8 @@ object RetrofitInstance {
 // Funzione per recuperare l'UID da SharedPreferences e fare l'update su Firestore
 @OptIn(UnstableApi::class)
 private fun updatePlayerDataToFirestore(isWinner:Boolean, context: Context) {
-    val sharedPreferences = context.getSharedPreferences("YourSharedPreferences", Context.MODE_PRIVATE)
-    val uid = sharedPreferences.getString("uid", null)
+    val sharedPreferences = context.getSharedPreferences("MyAppPrefs", Context.MODE_PRIVATE)
+    val uid = sharedPreferences.getString("uid", "player1")
     var point = sharedPreferences.getInt("points", 0)
 
     if (uid != null) {
