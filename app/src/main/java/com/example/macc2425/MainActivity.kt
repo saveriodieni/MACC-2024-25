@@ -201,6 +201,7 @@ fun HomeScreen(
             Spacer(modifier = Modifier.height(310.dp)) // Distanza tra il titolo e il resto del contenuto
 
             if (user != null) {
+                userId= user!!.uid
                 val userName = user?.displayName ?.split(" ")?.get(0) ?: "Guest"
                 Text(
                     text = "Welcome, $userName!",
@@ -215,6 +216,7 @@ fun HomeScreen(
                         firebaseAuth.signOut()
                         googleSignInClient.signOut()
                         user = null // Resetta lo stato dell'utente
+                        userId=""
                         Toast.makeText(context, "Signed out", Toast.LENGTH_SHORT).show()
                     },
                     modifier = Modifier
@@ -428,27 +430,39 @@ private fun handleSignInResult(
     }
 
 }
-
 private fun saveUserToFirestore(user: com.google.firebase.auth.FirebaseUser) {
     val firestore = FirebaseFirestore.getInstance()
     val userDocument = firestore.collection("users").document(user.uid)
 
-    val userData = mapOf(
-        "uid" to user.uid,
-        "name" to user.displayName,
-        "email" to user.email,
-        "points" to 0,
-        "photoUrl" to user.photoUrl?.toString()
-    )
+    userDocument.get()
+        .addOnSuccessListener { document ->
+            if (document.exists()) {
+                // Lo user esiste già, non fare nulla o esegui un aggiornamento condizionale
+                android.util.Log.d("FirestoreDB", "User already exists in Firestore")
+            } else {
+                // Lo user non esiste, salvalo
+                val userData = mapOf(
+                    "uid" to user.uid,
+                    "name" to user.displayName,
+                    "email" to user.email,
+                    "points" to 0,
+                    "photoUrl" to user.photoUrl?.toString()
+                )
 
-    userDocument.set(userData)
-        .addOnSuccessListener {
-            android.util.Log.d("FirestoreDB", "User saved to Firestore successfully")
+                userDocument.set(userData)
+                    .addOnSuccessListener {
+                        android.util.Log.d("FirestoreDB", "User saved to Firestore successfully")
+                    }
+                    .addOnFailureListener { e ->
+                        android.util.Log.e("FirestoreDB", "Failed to save user: ${e.message}")
+                    }
+            }
         }
         .addOnFailureListener { e ->
-            android.util.Log.e("FirestoreDB", "Failed to save user: ${e.message}")
+            android.util.Log.e("FirestoreDB", "Failed to check if user exists: ${e.message}")
         }
 }
+
 
 fun updateUserField(userId: String, field: String, newValue: Any, onSuccess: () -> Unit, onFailure: (Exception) -> Unit) {
     // Ottieni una istanza di Firestore
