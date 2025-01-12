@@ -7,8 +7,10 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Canvas
 import android.graphics.Color
+import android.graphics.LinearGradient
 import android.graphics.Paint
 import android.graphics.RectF
+import android.graphics.Shader
 import android.hardware.Sensor
 import android.hardware.SensorEvent
 import android.hardware.SensorEventListener
@@ -16,6 +18,7 @@ import android.hardware.SensorManager
 import android.os.VibrationEffect
 import android.os.Vibrator
 import android.util.AttributeSet
+import android.util.Log
 import android.view.View
 import androidx.appcompat.app.AlertDialog
 import kotlin.math.abs
@@ -70,6 +73,7 @@ class AutoView @JvmOverloads constructor(
     private var  targetX = 0f
 
 
+    private var lightValue: Float = 0f // Valore della luce ambientale
 
     // Fattore di scala per le immagini
     private val scaleFactor = 0.5f // Riduci tutte le immagini al 50%
@@ -80,6 +84,11 @@ class AutoView @JvmOverloads constructor(
 
     private var distance1 = 0f
     private var distance2 = 0f
+
+    private val paint = Paint()
+
+
+
 
     private val obstacleBitmap: Bitmap = Bitmap.createScaledBitmap(
         BitmapFactory.decodeResource(resources, R.drawable.muretto),
@@ -144,6 +153,12 @@ class AutoView @JvmOverloads constructor(
         accelerometer?.let {
             sensorManager.registerListener(this, it, SensorManager.SENSOR_DELAY_GAME)
         }
+
+        val lightSensor = sensorManager.getDefaultSensor(Sensor.TYPE_LIGHT)
+        lightSensor?.let {
+            sensorManager.registerListener(this, it, SensorManager.SENSOR_DELAY_UI)
+        }
+
     }
 
     private fun createCollisionMask(bitmap: Bitmap): Array<BooleanArray> {
@@ -208,11 +223,49 @@ class AutoView @JvmOverloads constructor(
         return false
     }
 
+    // Aggiorna il layout ogni volta che cambia la luce
+    fun updateLight(value: Float) {
+        lightValue = value
+        invalidate() // Ridisegna la vista
+    }
+
+
+    // Normalizza il valore della luce tra 0 e 1
+    private fun normalizeLightValue(value: Float): Float {
+        return (value / 100).coerceIn(0f, 1f) // Presupponendo che 1000 lux sia il massimo
+    }
+
+
+
+
+    // Interpolazione tra due colori
+    private fun interpolateColor(color1: Int, color2: Int, factor: Float): Int {
+        val inverseFactor = 1 - factor
+        val r = (Color.red(color1) * inverseFactor + Color.red(color2) * factor).toInt()
+        val g = (Color.green(color1) * inverseFactor + Color.green(color2) * factor).toInt()
+        val b = (Color.blue(color1) * inverseFactor + Color.blue(color2) * factor).toInt()
+        return Color.rgb(r, g, b)
+    }
+
     override fun onDraw(canvas: Canvas) {
         if (!gameOver) {
             super.onDraw(canvas)
 
-            canvas.drawColor(Color.parseColor("#ADD8E6"))
+
+
+            // Calcola dinamicamente il colore di sfondo in base alla luce
+            val backgroundColor = interpolateColor(
+                Color.parseColor("#001f3f"), // Colore scuro (notte)
+                Color.parseColor("#ADD8E6"), // Colore chiaro (giorno)
+                normalizeLightValue(lightValue)
+            )
+
+            // Imposta lo sfondo con il colore uniforme
+            canvas.drawColor(backgroundColor)
+
+            // Disegna il valore della luce come testo
+            paint.color = Color.WHITE
+            paint.textSize = 50f
 
             // Aggiungi una soglia per quando il traguardo deve apparire
             val finishThreshold =
@@ -458,9 +511,17 @@ class AutoView @JvmOverloads constructor(
     override fun onSensorChanged(event: SensorEvent) {
         if (event.sensor.type == Sensor.TYPE_ACCELEROMETER) {
             xAccel = alpha * lastXAccel + (1 - alpha) * -event.values[0]
-            yAccel = alpha * lastYAccel + (1 - alpha) * (event.values[1]-3.14/2).toFloat()
+            yAccel = alpha * lastYAccel + (1 - alpha) * 3/2*(event.values[1]-3.14*7/4).toFloat()
             lastXAccel = xAccel
             lastYAccel = yAccel
+        }
+        if (event != null && event.sensor.type == Sensor.TYPE_LIGHT) {
+            // Estrai il valore della luce ambientale
+            val lightValue = event.values[0]
+            Log.d("LightSensor", "Light value: $lightValue lux")
+
+            // Aggiorna il colore dello sfondo in base alla luce
+            updateLight(lightValue)
         }
     }
 

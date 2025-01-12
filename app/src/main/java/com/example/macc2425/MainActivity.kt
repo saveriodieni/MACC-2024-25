@@ -6,6 +6,9 @@ import android.content.pm.ActivityInfo
 import android.os.Bundle
 import android.util.Log
 import android.view.WindowManager
+import android.widget.ArrayAdapter
+import android.widget.LinearLayout
+import android.widget.ListView
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -41,6 +44,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.ui.text.style.TextAlign
 
 var userId: String = ""
 
@@ -100,9 +108,165 @@ fun AppNavigation(googleSignInClient: GoogleSignInClient, firebaseAuth: Firebase
 }
 
 @Composable
-fun <NavHostController> RankingScreen(navController: NavHostController, googleSignInClient: GoogleSignInClient, firebaseAuth: FirebaseAuth) {
-    // to do
+fun RankingScreen(navController: NavController, googleSignInClient: GoogleSignInClient, firebaseAuth: FirebaseAuth) {
+
+    val user = firebaseAuth.currentUser
+    val context = LocalContext.current
+    val firestore = FirebaseFirestore.getInstance()
+
+    // Stato per gestire la lista degli utenti
+    var userList = remember { mutableStateListOf<String>() }
+    if (user != null) {
+        // Carica i dati da Firestore
+        LaunchedEffect(Unit) {
+            firestore.collection("users")
+                .get()
+                .addOnSuccessListener { documents ->
+                    val unsortedList = mutableListOf<Pair<String, Int>>()
+                    for (document in documents) {
+                        val displayName = document.getString("name") ?: "Unknown"
+                        val points = document.getLong("points")?.toInt() ?: 0
+                        unsortedList.add(displayName to points)
+                    }
+
+                    // Ordina la lista per punti in ordine decrescente
+                    val sortedList = unsortedList.sortedByDescending { it.second }
+
+                    // Aggiorna la lista di stato con i dati ordinati
+                    userList.clear()
+                    userList.addAll(sortedList.map { "${it.first} - Points: ${it.second}" })
+
+                }
+                .addOnFailureListener { exception ->
+                    Toast.makeText(context, "Error: ${exception.message}", Toast.LENGTH_SHORT)
+                        .show()
+                }
+        }
+    }
+
+    // UI Composable
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp)
+    ) {
+
+        Box(
+            modifier = Modifier.align(Alignment.CenterHorizontally)
+        ) {
+            // Contorno nero (spostato in tutte le direzioni)
+            Text(
+                text = "Ranking",
+                style = MaterialTheme.typography.headlineLarge.copy(
+                    fontWeight = FontWeight.Black,
+                    fontSize = 45.sp,
+                    color = Color.Black // Colore del contorno
+                ),
+                modifier = Modifier
+                    .offset(x = (-1).dp, y = (-1).dp)
+            )
+            Text(
+                text = "Ranking",
+                style = MaterialTheme.typography.headlineLarge.copy(
+                    fontWeight = FontWeight.Black,
+                    fontSize = 45.sp,
+                    color = Color.Black // Colore del contorno
+                ),
+                modifier = Modifier
+                    .offset(x = 1.dp, y = (-1).dp)
+            )
+            Text(
+                text = "Ranking",
+                style = MaterialTheme.typography.headlineLarge.copy(
+                    fontWeight = FontWeight.Black,
+                    fontSize = 45.sp,
+                    color = Color.Black // Colore del contorno
+                ),
+                modifier = Modifier
+                    .offset(x = (-1).dp, y = 1.dp)
+            )
+            Text(
+                text = "Ranking",
+                style = MaterialTheme.typography.headlineLarge.copy(
+                    fontWeight = FontWeight.Black,
+                    fontSize = 45.sp,
+                    color = Color.Black // Colore del contorno
+                ),
+                modifier = Modifier
+                    .offset(x = 1.dp, y = 1.dp)
+            )
+            // Testo principale (verde)
+            Text(
+                text = "Ranking",
+                style = MaterialTheme.typography.headlineLarge.copy(
+                    fontWeight = FontWeight.Black,
+                    fontSize = 45.sp,
+                    color = Color(0xFF71A871) // Colore principale
+                )
+            )
+        }
+        Spacer(modifier = Modifier.height(80.dp))
+        // Card per creare la tabella
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            //elevation = 4.dp,
+            shape = MaterialTheme.shapes.medium
+        ) {
+            Column {
+                // Header della tabella
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        //.background(MaterialTheme.colors.primary)
+                        .padding(12.dp)
+                ) {
+                    Text(
+                        text = "User Name",
+                        modifier = Modifier.weight(1f),
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = Color.Black
+                    )
+                    Text(
+                        text = "Points",
+                        modifier = Modifier.weight(1f),
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = Color.Black,
+                        textAlign = TextAlign.End
+                    )
+                }
+
+                // Lista degli utenti
+                LazyColumn {
+                    items(userList) { user ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(8.dp)
+                                //.border(1.dp, MaterialTheme.colors.onSurface.copy(alpha = 0.12f)) // Cornice attorno alle righe
+                        ) {
+                            Text(
+                                text = user.split(" - ")[0], // Nome utente
+                                modifier = Modifier.weight(1f),
+                                style = MaterialTheme.typography.bodyMedium
+                            )
+                            Text(
+                                text = user.split(" - ")[1], // Punti
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .padding(end = 16.dp),
+                                style = MaterialTheme.typography.bodyMedium,
+                                textAlign = TextAlign.End
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+
 }
+
 
 @Composable
 fun HomeScreen(
@@ -198,7 +362,7 @@ fun HomeScreen(
             }
 
 
-            Spacer(modifier = Modifier.height(310.dp)) // Distanza tra il titolo e il resto del contenuto
+            Spacer(modifier = Modifier.height(265.dp)) // Distanza tra il titolo e il resto del contenuto
 
             if (user != null) {
                 userId= user!!.uid
@@ -210,7 +374,7 @@ fun HomeScreen(
                         fontWeight = FontWeight.Bold // Puoi anche impostare il grassetto
                     )
                 )
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(13.dp))
                 Button(
                     onClick = {
                         firebaseAuth.signOut()
@@ -259,7 +423,7 @@ fun HomeScreen(
                 }
             }
 
-            Spacer(modifier = Modifier.height(8.dp))
+            //Spacer(modifier = Modifier.height(4.dp))
 
             Button(
                 onClick = {
@@ -289,7 +453,7 @@ fun HomeScreen(
                 )
             }
 
-            Spacer(modifier = Modifier.height(8.dp))
+            //Spacer(modifier = Modifier.height(4.dp))
 
             Button(
                 onClick = {
@@ -315,11 +479,16 @@ fun HomeScreen(
                 )
             }
 
-            Spacer(modifier = Modifier.height(8.dp)) // Distanza tra il titolo e il resto del contenuto
+            //Spacer(modifier = Modifier.height(4.dp)) // Distanza tra il titolo e il resto del contenuto
 
             Button(
                 onClick = {
-                    navController.navigate("Ranking")
+                    if(userId == ""){
+                        Toast.makeText(context, "You must be logged to play online", Toast.LENGTH_SHORT).show()
+                    }
+                    else {
+                        navController.navigate("Ranking")
+                    }
                 },
                 modifier = Modifier
                     .padding(16.dp)
