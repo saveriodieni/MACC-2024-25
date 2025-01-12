@@ -92,7 +92,7 @@ fun InitialMenuScreen(navController: NavController) {
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Text(
-            text = "Scegli un'opzione",
+            text = "Select an option",
             style = MaterialTheme.typography.titleLarge
         )
 
@@ -103,7 +103,7 @@ fun InitialMenuScreen(navController: NavController) {
             onClick = { navController.navigate("createGame") },
             modifier = Modifier.fillMaxWidth()
         ) {
-            Text("Crea Partita")
+            Text("New Match")
         }
 
         Spacer(modifier = Modifier.height(16.dp))
@@ -113,7 +113,7 @@ fun InitialMenuScreen(navController: NavController) {
             onClick = { navController.navigate("joinGame") },
             modifier = Modifier.fillMaxWidth()
         ) {
-            Text("Unisciti a una Partita")
+            Text("Join a Match")
         }
     }
 }
@@ -132,7 +132,7 @@ fun MultiplayerAppScreen(
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Text(
-            text = "Imposta configurazione partita",
+            text = "Set up game configuration",
             style = MaterialTheme.typography.titleLarge
         )
 
@@ -143,7 +143,7 @@ fun MultiplayerAppScreen(
             value = numberOfLevels,
             onValueChange = { numberOfLevels = it },
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-            label = { Text("Numero di livelli") },
+            label = { Text("Number of levels") },
             modifier = Modifier.fillMaxWidth()
         )
 
@@ -163,7 +163,7 @@ fun MultiplayerAppScreen(
             },
             modifier = Modifier.fillMaxWidth()
         ) {
-            Text("Avvia Partita")
+            Text("Start Match")
         }
     }
 }
@@ -182,7 +182,7 @@ fun JoinGameScreen(navController: NavController) {
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Text(
-            text = "Inserisci il codice partita",
+            text = "Enter the match code",
             style = MaterialTheme.typography.titleLarge
         )
 
@@ -193,7 +193,7 @@ fun JoinGameScreen(navController: NavController) {
             value = gameCode,
             onValueChange = { gameCode = it },
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text),
-            label = { Text("Codice Partita") },
+            label = { Text("Match code") },
             modifier = Modifier.fillMaxWidth()
         )
 
@@ -222,16 +222,16 @@ fun JoinGameScreen(navController: NavController) {
                             )
                         },
                         onError = {
-                            errorMessage = "Codice non valido. Riprova."
+                            errorMessage = "Invalid code. Try again."
                         }
                     )
                 } else {
-                    errorMessage = "Inserisci un codice valido."
+                    errorMessage = "Enter a valid code."
                 }
             },
             modifier = Modifier.fillMaxWidth()
         ) {
-            Text("Unisciti")
+            Text("Join")
         }
     }
 }
@@ -280,14 +280,14 @@ fun WaitingScreen(
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Text(
-                text = "Codice Partita: $gameCode",
+                text = "Match Code: $gameCode",
                 style = MaterialTheme.typography.titleLarge
             )
             Spacer(modifier = Modifier.height(16.dp))
             CircularProgressIndicator()
             Spacer(modifier = Modifier.height(8.dp))
             Text(
-                text = "In attesa che gli altri giocatori si uniscano...",
+                text = "Waiting for other players to join...",
                 style = MaterialTheme.typography.bodyMedium
             )
         }
@@ -300,7 +300,7 @@ fun WaitingScreen(
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Text(
-                text = "Partita pronta! Reindirizzamento...",
+                text = "Game ready! Redirection...",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.primary
             )
