@@ -6,6 +6,7 @@ import android.util.Log
 import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.*
@@ -13,6 +14,8 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
@@ -84,36 +87,48 @@ fun MultiplayerAppNavigation() {
 
 @Composable
 fun InitialMenuScreen(navController: NavController) {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp),
-        verticalArrangement = Arrangement.Center,
-        horizontalAlignment = Alignment.CenterHorizontally
+
+    Box(
+        modifier = Modifier.fillMaxSize()
     ) {
-        Text(
-            text = "Select an option",
-            style = MaterialTheme.typography.titleLarge
+        // Immagine di sfondo
+        Image(
+            painter = painterResource(id = R.drawable.sfondo2), // Assicurati che sfondo2 sia nel folder "res/drawable"
+            contentDescription = null, // L'immagine è decorativa, quindi non serve la descrizione
+            modifier = Modifier.fillMaxSize(),
+            contentScale = ContentScale.Crop // Ritaglia o scala l'immagine per coprire l'intero sfondo
         )
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        // Pulsante per creare una partita
-        Button(
-            onClick = { navController.navigate("createGame") },
-            modifier = Modifier.fillMaxWidth()
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(16.dp),
+            verticalArrangement = Arrangement.Center,
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Text("New Match")
-        }
+            Text(
+                text = "Select an option",
+                style = MaterialTheme.typography.titleLarge
+            )
 
-        Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(16.dp))
 
-        // Pulsante per unirsi a una partita
-        Button(
-            onClick = { navController.navigate("joinGame") },
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Text("Join a Match")
+            // Pulsante per creare una partita
+            Button(
+                onClick = { navController.navigate("createGame") },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("New Match")
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Pulsante per unirsi a una partita
+            Button(
+                onClick = { navController.navigate("joinGame") },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("Join a Match")
+            }
         }
     }
 }
@@ -123,47 +138,58 @@ fun MultiplayerAppScreen(
     navController: NavController
 ) {
     var numberOfLevels by remember { mutableStateOf("") } // Memorizza il numero di livelli inserito
-
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp),
-        verticalArrangement = Arrangement.Center,
-        horizontalAlignment = Alignment.CenterHorizontally
+    Box(
+        modifier = Modifier.fillMaxSize()
     ) {
-        Text(
-            text = "Set up game configuration",
-            style = MaterialTheme.typography.titleLarge
+        // Immagine di sfondo
+        Image(
+            painter = painterResource(id = R.drawable.sfondo2), // Assicurati che sfondo2 sia nel folder "res/drawable"
+            contentDescription = null, // L'immagine è decorativa, quindi non serve la descrizione
+            modifier = Modifier.fillMaxSize(),
+            contentScale = ContentScale.Crop // Ritaglia o scala l'immagine per coprire l'intero sfondo
         )
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        // TextField per inserire il numero di livelli
-        TextField(
-            value = numberOfLevels,
-            onValueChange = { numberOfLevels = it },
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-            label = { Text("Number of levels") },
-            modifier = Modifier.fillMaxWidth()
-        )
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        // Pulsante per avviare la partita
-        Button(
-            onClick = {
-                val levels = numberOfLevels.toIntOrNull()
-                if (levels != null && levels > 0) {
-                    val gameCode = UUID.randomUUID().toString().take(6).uppercase() // Genera codice partita
-                    sendGameConfigToServer(gameCode, levels) // Invia richiesta al server
-                    navController.navigate("waiting/$gameCode") // Naviga alla schermata online con il codice
-                } else {
-                    // Gestisci errore input non valido
-                }
-            },
-            modifier = Modifier.fillMaxWidth()
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(16.dp),
+            verticalArrangement = Arrangement.Center,
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Text("Start Match")
+            Text(
+                text = "Set up game configuration",
+                style = MaterialTheme.typography.titleLarge
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // TextField per inserire il numero di livelli
+            TextField(
+                value = numberOfLevels,
+                onValueChange = { numberOfLevels = it },
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                label = { Text("Number of levels") },
+                modifier = Modifier.fillMaxWidth()
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Pulsante per avviare la partita
+            Button(
+                onClick = {
+                    val levels = numberOfLevels.toIntOrNull()
+                    if (levels != null && levels > 0) {
+                        val gameCode = UUID.randomUUID().toString().take(6)
+                            .uppercase() // Genera codice partita
+                        sendGameConfigToServer(gameCode, levels) // Invia richiesta al server
+                        navController.navigate("waiting/$gameCode") // Naviga alla schermata online con il codice
+                    } else {
+                        // Gestisci errore input non valido
+                    }
+                },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("Start Match")
+            }
         }
     }
 }
@@ -173,65 +199,75 @@ fun MultiplayerAppScreen(
 fun JoinGameScreen(navController: NavController) {
     var gameCode by remember { mutableStateOf("") } // Memorizza il codice della partita inserito
     var errorMessage by remember { mutableStateOf("") } // Per gestire errori
-
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp),
-        verticalArrangement = Arrangement.Center,
-        horizontalAlignment = Alignment.CenterHorizontally
+    Box(
+        modifier = Modifier.fillMaxSize()
     ) {
-        Text(
-            text = "Enter the match code",
-            style = MaterialTheme.typography.titleLarge
+        // Immagine di sfondo
+        Image(
+            painter = painterResource(id = R.drawable.sfondo2), // Assicurati che sfondo2 sia nel folder "res/drawable"
+            contentDescription = null, // L'immagine è decorativa, quindi non serve la descrizione
+            modifier = Modifier.fillMaxSize(),
+            contentScale = ContentScale.Crop // Ritaglia o scala l'immagine per coprire l'intero sfondo
         )
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        // TextField per inserire il codice della partita
-        TextField(
-            value = gameCode,
-            onValueChange = { gameCode = it },
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text),
-            label = { Text("Match code") },
-            modifier = Modifier.fillMaxWidth()
-        )
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        // Mostra eventuale messaggio di errore
-        if (errorMessage.isNotEmpty()) {
-            Text(
-                text = errorMessage,
-                color = MaterialTheme.colorScheme.error,
-                style = MaterialTheme.typography.bodyMedium
-            )
-            Spacer(modifier = Modifier.height(16.dp))
-        }
-
-        // Pulsante per unirsi alla partita
-        Button(
-            onClick = {
-                if (gameCode.isNotEmpty()) {
-                    validateGameCode(
-                        gameCode,
-                        onSuccess = { roadLen, levels, obstacles ->
-                            val encodedObstacles = URLEncoder.encode(obstacles)
-                            navController.navigate(
-                                "online/$gameCode?roadLen=$roadLen&levels=$levels&obstacles=$encodedObstacles"
-                            )
-                        },
-                        onError = {
-                            errorMessage = "Invalid code. Try again."
-                        }
-                    )
-                } else {
-                    errorMessage = "Enter a valid code."
-                }
-            },
-            modifier = Modifier.fillMaxWidth()
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(16.dp),
+            verticalArrangement = Arrangement.Center,
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Text("Join")
+            Text(
+                text = "Enter the match code",
+                style = MaterialTheme.typography.titleLarge
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // TextField per inserire il codice della partita
+            TextField(
+                value = gameCode,
+                onValueChange = { gameCode = it },
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text),
+                label = { Text("Match code") },
+                modifier = Modifier.fillMaxWidth()
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Mostra eventuale messaggio di errore
+            if (errorMessage.isNotEmpty()) {
+                Text(
+                    text = errorMessage,
+                    color = MaterialTheme.colorScheme.error,
+                    style = MaterialTheme.typography.bodyMedium
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+            }
+
+            // Pulsante per unirsi alla partita
+            Button(
+                onClick = {
+                    if (gameCode.isNotEmpty()) {
+                        validateGameCode(
+                            gameCode,
+                            onSuccess = { roadLen, levels, obstacles ->
+                                val encodedObstacles = URLEncoder.encode(obstacles)
+                                navController.navigate(
+                                    "online/$gameCode?roadLen=$roadLen&levels=$levels&obstacles=$encodedObstacles"
+                                )
+                            },
+                            onError = {
+                                errorMessage = "Invalid code. Try again."
+                            }
+                        )
+                    } else {
+                        errorMessage = "Enter a valid code."
+                    }
+                },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("Join")
+            }
         }
     }
 }
@@ -272,38 +308,60 @@ fun WaitingScreen(
     }
 
     if (!isGameReady) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(16.dp),
-            verticalArrangement = Arrangement.Center,
-            horizontalAlignment = Alignment.CenterHorizontally
+        Box(
+            modifier = Modifier.fillMaxSize()
         ) {
-            Text(
-                text = "Match Code: $gameCode",
-                style = MaterialTheme.typography.titleLarge
+            // Immagine di sfondo
+            Image(
+                painter = painterResource(id = R.drawable.sfondo2), // Assicurati che sfondo2 sia nel folder "res/drawable"
+                contentDescription = null, // L'immagine è decorativa, quindi non serve la descrizione
+                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.Crop // Ritaglia o scala l'immagine per coprire l'intero sfondo
             )
-            Spacer(modifier = Modifier.height(16.dp))
-            CircularProgressIndicator()
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(
-                text = "Waiting for other players to join...",
-                style = MaterialTheme.typography.bodyMedium
-            )
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.Center,
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text(
+                    text = "Match Code: $gameCode",
+                    style = MaterialTheme.typography.titleLarge
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+                CircularProgressIndicator()
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = "Waiting for other players to join...",
+                    style = MaterialTheme.typography.bodyMedium
+                )
+            }
         }
     } else {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(16.dp),
-            verticalArrangement = Arrangement.Center,
-            horizontalAlignment = Alignment.CenterHorizontally
+        Box(
+            modifier = Modifier.fillMaxSize()
         ) {
-            Text(
-                text = "Game ready! Redirection...",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.primary
+            // Immagine di sfondo
+            Image(
+                painter = painterResource(id = R.drawable.sfondo2), // Assicurati che sfondo2 sia nel folder "res/drawable"
+                contentDescription = null, // L'immagine è decorativa, quindi non serve la descrizione
+                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.Crop // Ritaglia o scala l'immagine per coprire l'intero sfondo
             )
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.Center,
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text(
+                    text = "Game ready! Redirection...",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.primary
+                )
+            }
         }
     }
 }

@@ -143,127 +143,137 @@ fun RankingScreen(navController: NavController, googleSignInClient: GoogleSignIn
                 }
         }
     }
-
-    // UI Composable
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp)
+    Box(
+        modifier = Modifier.fillMaxSize()
     ) {
+        // Immagine di sfondo
+        Image(
+            painter = painterResource(id = R.drawable.sfondo2), // Assicurati che sfondo2 sia nel folder "res/drawable"
+            contentDescription = null, // L'immagine è decorativa, quindi non serve la descrizione
+            modifier = Modifier.fillMaxSize(),
+            contentScale = ContentScale.Crop // Ritaglia o scala l'immagine per coprire l'intero sfondo
+        )
+        // UI Composable
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(16.dp)
+        ) {
 
-        Box(
-            modifier = Modifier.align(Alignment.CenterHorizontally)
-        ) {
-            // Contorno nero (spostato in tutte le direzioni)
-            Text(
-                text = "Ranking",
-                style = MaterialTheme.typography.headlineLarge.copy(
-                    fontWeight = FontWeight.Black,
-                    fontSize = 45.sp,
-                    color = Color.Black // Colore del contorno
-                ),
-                modifier = Modifier
-                    .offset(x = (-1).dp, y = (-1).dp)
-            )
-            Text(
-                text = "Ranking",
-                style = MaterialTheme.typography.headlineLarge.copy(
-                    fontWeight = FontWeight.Black,
-                    fontSize = 45.sp,
-                    color = Color.Black // Colore del contorno
-                ),
-                modifier = Modifier
-                    .offset(x = 1.dp, y = (-1).dp)
-            )
-            Text(
-                text = "Ranking",
-                style = MaterialTheme.typography.headlineLarge.copy(
-                    fontWeight = FontWeight.Black,
-                    fontSize = 45.sp,
-                    color = Color.Black // Colore del contorno
-                ),
-                modifier = Modifier
-                    .offset(x = (-1).dp, y = 1.dp)
-            )
-            Text(
-                text = "Ranking",
-                style = MaterialTheme.typography.headlineLarge.copy(
-                    fontWeight = FontWeight.Black,
-                    fontSize = 45.sp,
-                    color = Color.Black // Colore del contorno
-                ),
-                modifier = Modifier
-                    .offset(x = 1.dp, y = 1.dp)
-            )
-            // Testo principale (verde)
-            Text(
-                text = "Ranking",
-                style = MaterialTheme.typography.headlineLarge.copy(
-                    fontWeight = FontWeight.Black,
-                    fontSize = 45.sp,
-                    color = Color(0xFF71A871) // Colore principale
-                )
-            )
-        }
-        Spacer(modifier = Modifier.height(80.dp))
-        // Card per creare la tabella
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            //elevation = 4.dp,
-            shape = MaterialTheme.shapes.medium
-        ) {
-            Column {
-                // Header della tabella
-                Row(
+            Box(
+                modifier = Modifier.align(Alignment.CenterHorizontally)
+            ) {
+                // Contorno nero (spostato in tutte le direzioni)
+                Text(
+                    text = "Ranking",
+                    style = MaterialTheme.typography.headlineLarge.copy(
+                        fontWeight = FontWeight.Black,
+                        fontSize = 45.sp,
+                        color = Color.Black // Colore del contorno
+                    ),
                     modifier = Modifier
-                        .fillMaxWidth()
-                        //.background(MaterialTheme.colors.primary)
-                        .padding(12.dp)
-                ) {
-                    Text(
-                        text = "User Name",
-                        modifier = Modifier.weight(1f),
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = Color.Black
+                        .offset(x = (-1).dp, y = (-1).dp)
+                )
+                Text(
+                    text = "Ranking",
+                    style = MaterialTheme.typography.headlineLarge.copy(
+                        fontWeight = FontWeight.Black,
+                        fontSize = 45.sp,
+                        color = Color.Black // Colore del contorno
+                    ),
+                    modifier = Modifier
+                        .offset(x = 1.dp, y = (-1).dp)
+                )
+                Text(
+                    text = "Ranking",
+                    style = MaterialTheme.typography.headlineLarge.copy(
+                        fontWeight = FontWeight.Black,
+                        fontSize = 45.sp,
+                        color = Color.Black // Colore del contorno
+                    ),
+                    modifier = Modifier
+                        .offset(x = (-1).dp, y = 1.dp)
+                )
+                Text(
+                    text = "Ranking",
+                    style = MaterialTheme.typography.headlineLarge.copy(
+                        fontWeight = FontWeight.Black,
+                        fontSize = 45.sp,
+                        color = Color.Black // Colore del contorno
+                    ),
+                    modifier = Modifier
+                        .offset(x = 1.dp, y = 1.dp)
+                )
+                // Testo principale (verde)
+                Text(
+                    text = "Ranking",
+                    style = MaterialTheme.typography.headlineLarge.copy(
+                        fontWeight = FontWeight.Black,
+                        fontSize = 45.sp,
+                        color = Color(0xFF71A871) // Colore principale
                     )
-                    Text(
-                        text = "Points",
-                        modifier = Modifier.weight(1f),
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = Color.Black,
-                        textAlign = TextAlign.End
-                    )
-                }
+                )
+            }
+            Spacer(modifier = Modifier.height(80.dp))
+            // Card per creare la tabella
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .border(1.dp, Color.Black, shape = MaterialTheme.shapes.medium), // Bordo nero
+                shape = MaterialTheme.shapes.medium
+            ) {
+                Column {
+                    // Header della tabella
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            //.background(MaterialTheme.colors.primary)
+                            .padding(12.dp)
+                    ) {
+                        Text(
+                            text = "Username",
+                            modifier = Modifier.weight(1f),
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = Color.Black
+                        )
+                        Text(
+                            text = "Points",
+                            modifier = Modifier.weight(1f),
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = Color.Black,
+                            textAlign = TextAlign.End
+                        )
+                    }
 
-                // Lista degli utenti
-                LazyColumn {
-                    items(userList) { user ->
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(8.dp)
-                                //.border(1.dp, MaterialTheme.colors.onSurface.copy(alpha = 0.12f)) // Cornice attorno alle righe
-                        ) {
-                            Text(
-                                text = user.split(" - ")[0], // Nome utente
-                                modifier = Modifier.weight(1f),
-                                style = MaterialTheme.typography.bodyMedium
-                            )
-                            Text(
-                                text = user.split(" - ")[1], // Punti
+                    // Lista degli utenti
+                    LazyColumn {
+                        items(userList) { user ->
+                            Row(
                                 modifier = Modifier
-                                    .weight(1f)
-                                    .padding(end = 16.dp),
-                                style = MaterialTheme.typography.bodyMedium,
-                                textAlign = TextAlign.End
-                            )
+                                    .fillMaxWidth()
+                                    .padding(8.dp)
+                                //.border(1.dp, MaterialTheme.colors.onSurface.copy(alpha = 0.12f)) // Cornice attorno alle righe
+                            ) {
+                                Text(
+                                    text = user.split(" - ")[0], // Nome utente
+                                    modifier = Modifier.weight(1f),
+                                    style = MaterialTheme.typography.bodyMedium
+                                )
+                                Text(
+                                    text = user.split(" - ")[1], // Punti
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .padding(end = 16.dp),
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    textAlign = TextAlign.End
+                                )
+                            }
                         }
                     }
                 }
             }
         }
     }
-
 
 }
 
