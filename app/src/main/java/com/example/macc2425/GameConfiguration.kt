@@ -69,7 +69,7 @@ fun MultiplayerAppNavigation() {
             WaitingScreen(gameCode, navController)
         }
         composable(
-            "online/{gameCode}?roadLen={roadLen}&levels={levels}&obstacles={obstacles}",
+            "online/{gameCode}?roadLen={roadLen}&levels={levels}&obstacles={obstacles}&creator={creator}",
             arguments = listOf(
                 navArgument("roadLen") { type = NavType.IntType },
                 navArgument("levels") { type = NavType.IntType },
@@ -80,7 +80,8 @@ fun MultiplayerAppNavigation() {
             val roadLen = backStackEntry.arguments?.getInt("roadLen") ?: 0
             val levels = backStackEntry.arguments?.getInt("levels") ?: 0
             val obstacles = backStackEntry.arguments?.getString("obstacles") ?: "[]"
-            OnlineScreen(gameCode, roadLen, levels, obstacles)
+            val creator = backStackEntry.arguments?.getBoolean("creator", false)
+            OnlineScreen(gameCode, roadLen, levels, obstacles, creator)
         }
     }
 }
@@ -252,8 +253,9 @@ fun JoinGameScreen(navController: NavController) {
                             gameCode,
                             onSuccess = { roadLen, levels, obstacles ->
                                 val encodedObstacles = URLEncoder.encode(obstacles)
+                                val creator=false
                                 navController.navigate(
-                                    "online/$gameCode?roadLen=$roadLen&levels=$levels&obstacles=$encodedObstacles"
+                                    "online/$gameCode?roadLen=$roadLen&levels=$levels&obstacles=$encodedObstacles&creator=$creator"
                                 )
                             },
                             onError = {
@@ -284,9 +286,10 @@ fun WaitingScreen(
     var obstacles by remember { mutableStateOf("") }
 
     LaunchedEffect(isGameReady) {
+        val creator = true
         if (isGameReady) {
             navController.navigate(
-                "online/$gameCode?roadLen=$roadLen&levels=$levels&obstacles=$obstacles"
+                "online/$gameCode?roadLen=$roadLen&levels=$levels&obstacles=$obstacles&creator=$creator"
             ) {
                 popUpTo("menu") { inclusive = true } // Torna alla schermata iniziale quando si esce
             }
@@ -367,7 +370,7 @@ fun WaitingScreen(
 }
 
 @Composable
-fun OnlineScreen(gameCode: String, roadLen: Int, levels: Int, obstacles: String) {
+fun OnlineScreen(gameCode: String, roadLen: Int, levels: Int, obstacles: String, creator: Boolean?) {
 
     Log.i("PreGameState", obstacles)
 
@@ -378,6 +381,7 @@ fun OnlineScreen(gameCode: String, roadLen: Int, levels: Int, obstacles: String)
                 setRoadLen(roadLen)
                 setLevels(levels)
                 setObstacles(obstacles) // Passa gli ostacoli a OnlineView
+                setStartingPositions(creator)
             }
         },
         modifier = Modifier.fillMaxSize()

@@ -43,8 +43,8 @@ class AutoView @JvmOverloads constructor(
     private val alpha = 0.8f // Smoothing factor
 
     // Definizione dei limiti della pista (puoi impostarli come preferisci)
-    private val trackLeft = 100f   // Coordinata x del bordo sinistro della pista
-    private val trackRight = 950f  // Coordinata x del bordo destro della pista
+    private val trackLeft = 80f   // Coordinata x del bordo sinistro della pista
+    private val trackRight = 990f  // Coordinata x del bordo destro della pista
 
     private val vibrator = context.getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
 

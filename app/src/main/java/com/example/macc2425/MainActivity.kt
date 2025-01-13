@@ -494,7 +494,7 @@ fun HomeScreen(
             Button(
                 onClick = {
                     if(userId == ""){
-                        Toast.makeText(context, "You must be logged to play online", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context, "You must be logged", Toast.LENGTH_SHORT).show()
                     }
                     else {
                         navController.navigate("Ranking")

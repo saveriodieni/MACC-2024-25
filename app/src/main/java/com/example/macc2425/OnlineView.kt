@@ -92,6 +92,11 @@ class OnlineView @JvmOverloads constructor(
         this.levels = levels
     }
 
+    fun setStartingPositions(creator: Boolean?) {
+        xPos1= if (creator == true) 100f else 500f
+        xPos2= if (creator == true) 500f else 100f
+    }
+
     private val DEBUG = false
     private val AUTODRIVE = true
 
