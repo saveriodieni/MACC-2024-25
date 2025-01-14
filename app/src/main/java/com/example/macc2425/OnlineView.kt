@@ -26,7 +26,6 @@ import android.os.VibrationEffect
 import android.os.Vibrator
 import android.util.AttributeSet
 import android.view.View
-import android.widget.Toast
 import androidx.annotation.OptIn
 import androidx.appcompat.app.AlertDialog
 import androidx.media3.common.util.Log
@@ -234,7 +233,7 @@ class OnlineView @JvmOverloads constructor(
             (originalFinishLineBitmap.height * scaleFactor).toInt(),
             true
         )
-        Toast.makeText(context, "You are the red car!", Toast.LENGTH_SHORT).show()
+
 
         // Carica e ridimensiona le immagini delle macchine
         var originalCarBitmap = BitmapFactory.decodeResource(resources, R.drawable.player1_image)
@@ -876,14 +875,15 @@ private fun updatePlayerDataToFirestore(isWinner:Boolean, context: Context) {
     val uid = sharedPreferences.getString("uid", "player1")
     var point = sharedPreferences.getInt("points", 0)
 
-
     if (uid != null) {
         val db = FirebaseFirestore.getInstance()
 
         if (isWinner) {
             point+=10
         }
-
+        else {
+            point-=5
+        }
 
         // Crea i dati che vuoi aggiornare
         val playerData = hashMapOf(

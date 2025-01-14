@@ -1,3 +1,4 @@
+
 package com.example.macc2425
 
 import android.content.Context
@@ -116,9 +117,8 @@ fun RankingScreen(navController: NavController, googleSignInClient: GoogleSignIn
 
     // Stato per gestire la lista degli utenti
     var userList = remember { mutableStateListOf<String>() }
-
     if (user != null) {
-        // Usa un effetto di composizione per ascoltare i cambiamenti
+        // Carica i dati da Firestore
         LaunchedEffect(Unit) {
             val listener = firestore.collection("users")
                 .addSnapshotListener { snapshots, exception ->
@@ -135,19 +135,14 @@ fun RankingScreen(navController: NavController, googleSignInClient: GoogleSignIn
                             unsortedList.add(displayName to points)
                         }
 
-                        // Ordina la lista per punti in ordine decrescente
-                        val sortedList = unsortedList.sortedByDescending { it.second }
+                    // Ordina la lista per punti in ordine decrescente
+                    val sortedList = unsortedList.sortedByDescending { it.second }
 
                         // Aggiorna la lista di stato con i dati ordinati
                         userList.clear()
                         userList.addAll(sortedList.map { "${it.first} - Points: ${it.second}" })
                     }
                 }
-
-           /* // Rimuovi il listener quando il composable viene smontato
-            onDispose {
-                listener.remove()
-            }*/
         }
     }
     Box(
@@ -603,8 +598,11 @@ private fun handleSignInResult(
                         // Salva l'UID nelle SharedPreferences
                         val sharedPref = context.getSharedPreferences("MyAppPrefs", Context.MODE_PRIVATE)
                         sharedPref.edit().putString("uid", user.uid).apply()
-                        val point = getUserPointsFromFirestore(user.uid)
-                        sharedPref.edit().putInt("points", point).apply()
+                        getUserPointsFromFirestore(user.uid) { point ->
+                            sharedPref.edit().putInt("points", point).apply()
+                        }
+                       /* val point = getUserPointsFromFirestore(user.uid)
+                        sharedPref.edit().putInt("points", point).apply() */
 
                     }
                 } else {
@@ -668,7 +666,7 @@ fun updateUserField(userId: String, field: String, newValue: Any, onSuccess: () 
             onFailure(exception)
         }
 }
-
+/*
 // Funzione per recuperare i punti da Firestore (o da un'altra fonte)
 private fun getUserPointsFromFirestore(userId: String): Int {
     // Puoi implementare una logica per recuperare i punti da Firestore. Ad esempio:
@@ -688,4 +686,18 @@ private fun getUserPointsFromFirestore(userId: String): Int {
         }
 
     return points
+}
+*/
+
+private fun getUserPointsFromFirestore(uid: String, onComplete: (Int) -> Unit) {
+    val db = FirebaseFirestore.getInstance()
+    db.collection("users").document(uid).get()
+        .addOnSuccessListener { document ->
+            val points = document.getLong("points")?.toInt() ?: 0
+            onComplete(points)
+        }
+        .addOnFailureListener { exception ->
+            Log.e("Firestore", "Error fetching points", exception)
+            onComplete(0) // Ritorna 0 in caso di errore
+        }
 }
