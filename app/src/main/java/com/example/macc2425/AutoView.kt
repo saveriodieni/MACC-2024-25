@@ -20,6 +20,7 @@ import android.os.Vibrator
 import android.util.AttributeSet
 import android.util.Log
 import android.view.View
+import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import kotlin.math.abs
 import kotlin.math.sqrt
@@ -117,7 +118,7 @@ class AutoView @JvmOverloads constructor(
             (originalFinishLineBitmap.height * scaleFactor).toInt(),
             true
         )
-
+        Toast.makeText(context, "You are the red car!", Toast.LENGTH_SHORT).show()
         initializeObstacles(numObstacles) // Genera 10 ostacoli iniziali
 
         // Carica e ridimensiona le immagini delle macchine

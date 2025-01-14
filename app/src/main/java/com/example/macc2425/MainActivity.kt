@@ -116,31 +116,38 @@ fun RankingScreen(navController: NavController, googleSignInClient: GoogleSignIn
 
     // Stato per gestire la lista degli utenti
     var userList = remember { mutableStateListOf<String>() }
+
     if (user != null) {
-        // Carica i dati da Firestore
+        // Usa un effetto di composizione per ascoltare i cambiamenti
         LaunchedEffect(Unit) {
-            firestore.collection("users")
-                .get()
-                .addOnSuccessListener { documents ->
-                    val unsortedList = mutableListOf<Pair<String, Int>>()
-                    for (document in documents) {
-                        val displayName = document.getString("name") ?: "Unknown"
-                        val points = document.getLong("points")?.toInt() ?: 0
-                        unsortedList.add(displayName to points)
+            val listener = firestore.collection("users")
+                .addSnapshotListener { snapshots, exception ->
+                    if (exception != null) {
+                        Toast.makeText(context, "Error: ${exception.message}", Toast.LENGTH_SHORT).show()
+                        return@addSnapshotListener
                     }
 
-                    // Ordina la lista per punti in ordine decrescente
-                    val sortedList = unsortedList.sortedByDescending { it.second }
+                    if (snapshots != null) {
+                        val unsortedList = mutableListOf<Pair<String, Int>>()
+                        for (document in snapshots) {
+                            val displayName = document.getString("name") ?: "Unknown"
+                            val points = document.getLong("points")?.toInt() ?: 0
+                            unsortedList.add(displayName to points)
+                        }
 
-                    // Aggiorna la lista di stato con i dati ordinati
-                    userList.clear()
-                    userList.addAll(sortedList.map { "${it.first} - Points: ${it.second}" })
+                        // Ordina la lista per punti in ordine decrescente
+                        val sortedList = unsortedList.sortedByDescending { it.second }
 
+                        // Aggiorna la lista di stato con i dati ordinati
+                        userList.clear()
+                        userList.addAll(sortedList.map { "${it.first} - Points: ${it.second}" })
+                    }
                 }
-                .addOnFailureListener { exception ->
-                    Toast.makeText(context, "Error: ${exception.message}", Toast.LENGTH_SHORT)
-                        .show()
-                }
+
+           /* // Rimuovi il listener quando il composable viene smontato
+            onDispose {
+                listener.remove()
+            }*/
         }
     }
     Box(
