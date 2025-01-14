@@ -577,12 +577,12 @@ class OnlineView @JvmOverloads constructor(
             offsetY += scrollSpeed
             distance1 = maxOf(distance1 - deltaY1, 0f)
 
-            if (abs(lastDistance2-distance2)>25f){
+            if (abs(lastDistance2-distance2)>10f){
                 if(lastDistance2<distance2){
-                    distance2-=50f
+                    distance2-=20f
                 }
                 else if (lastDistance2>distance2){
-                    distance2+=50f
+                    distance2+=20f
                 }
             }
             else{
