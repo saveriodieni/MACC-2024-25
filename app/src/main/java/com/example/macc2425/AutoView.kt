@@ -79,7 +79,7 @@ class AutoView @JvmOverloads constructor(
     // Fattore di scala per le immagini
     private val scaleFactor = 0.5f // Riduci tutte le immagini al 50%
 
-    private var numObstacles = 4
+    private var numObstacles = 3
     private var offsetY = 0f // Posizione verticale dell'immagine
     private var scrollSpeed = 0f // Velocità di scorrimento in pixel per frame
 
