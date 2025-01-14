@@ -26,6 +26,7 @@ import android.os.VibrationEffect
 import android.os.Vibrator
 import android.util.AttributeSet
 import android.view.View
+import android.widget.Toast
 import androidx.annotation.OptIn
 import androidx.appcompat.app.AlertDialog
 import androidx.media3.common.util.Log
@@ -37,6 +38,7 @@ import retrofit2.Response
 import retrofit2.http.Query
 import kotlin.math.sqrt
 import com.google.firebase.firestore.FirebaseFirestore
+import kotlin.math.abs
 
 
 data class PositionData(
@@ -233,7 +235,7 @@ class OnlineView @JvmOverloads constructor(
             (originalFinishLineBitmap.height * scaleFactor).toInt(),
             true
         )
-
+        Toast.makeText(context, "You are the red car!", Toast.LENGTH_SHORT).show()
 
         // Carica e ridimensiona le immagini delle macchine
         var originalCarBitmap = BitmapFactory.decodeResource(resources, R.drawable.player1_image)
@@ -545,7 +547,9 @@ class OnlineView @JvmOverloads constructor(
             // Aggiorna le posizioni in base all'accelerometro
             xPos1 += (xAccel * 2.5).toFloat() // Moltiplica per aumentare la sensibilità
             var deltaY1 = yPos1
-            yPos1 += yAccel * 10
+            var updateY = yAccel * 10
+            updateY=updateY.coerceIn(-50f,50f)
+            yPos1 += updateY
             // positions of car2 from cloud and post car1 info on the cloud
 
             //remember to get obstacle info
@@ -573,9 +577,17 @@ class OnlineView @JvmOverloads constructor(
             offsetY += scrollSpeed
             distance1 = maxOf(distance1 - deltaY1, 0f)
 
-            distance2 /= 2
-
-            distance2 += lastDistance2/2
+            if (abs(lastDistance2-distance2)>25f){
+                if(lastDistance2<distance2){
+                    distance2-=50f
+                }
+                else if (lastDistance2>distance2){
+                    distance2+=50f
+                }
+            }
+            else{
+                distance2=lastDistance2
+            }
 
             // Resetta l'offset per creare l'effetto di scorrimento infinito
             if (offsetY >= bitmapHeight) {
@@ -866,7 +878,6 @@ object RetrofitInstance {
             .create(GameApi::class.java)
     }
 }
-
 
 // Funzione per recuperare l'UID da SharedPreferences e fare l'update su Firestore
 @OptIn(UnstableApi::class)
